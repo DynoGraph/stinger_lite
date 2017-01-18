@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.11)
-project(stinger_core)
+project(stinger_core C)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu9x")
 
@@ -19,7 +19,8 @@ set(sources
 	src/stinger.c
 	src/stinger_deprecated.c
 	src/stinger_names.c
-	src/stinger_names_sqlite.c
+	# codegen doesn't like empty files
+	#src/stinger_names_sqlite.c
 	src/stinger_physmap.c
 	src/stinger_shared.c
 	src/stinger_vertex.c
@@ -42,7 +43,8 @@ set(headers
 	inc/stinger_vertex.h
 	inc/x86_full_empty.h
 	inc/xmalloc.h
-	inc/stinger_batch_insert.h
+	# Only file that requires C++
+	#inc/stinger_batch_insert.h
 	# HACK copied in from lib compat
 	inc/getMemorySize.h
 )
