@@ -256,8 +256,7 @@ get_from_ebpool (const struct stinger * S, eb_index_t *out, size_t k)
 	    "       information on how to do this.\n");
       abort();
     }
-    OMP("omp parallel for")
-      for (size_t ki = 0; ki < k; ++ki)
+      stinger_parallel_for (size_t ki = 0; ki < k; ++ki)
         out[ki] = ebt0 + ki;
   }
 }
@@ -836,8 +835,7 @@ struct stinger *stinger_new_full (struct stinger_config_t * config)
   ebpool->ebpool_tail = 1;
   ebpool->is_shared = 0;
 
-  OMP ("omp parallel for") 
-  for (i = 0; i < netypes; ++i) {
+  stinger_parallel_for(i = 0; i < netypes; ++i) {
     ETA(G,i)->length = nebs;
     ETA(G,i)->high = 0;
   }
@@ -931,8 +929,7 @@ new_ebs (struct stinger * S, eb_index_t *out, size_t neb, int64_t etype,
 
   MAP_STING(S);
 
-  OMP ("omp parallel for")
-    for (size_t i = 0; i < neb; ++i) {
+    stinger_parallel_for (size_t i = 0; i < neb; ++i) {
       struct stinger_eb * block = ebpool->ebpool + out[i];
       xzero (block, sizeof (*block));
       block->etype = etype;
@@ -956,8 +953,7 @@ new_blk_ebs (eb_index_t *out, const struct stinger *restrict G,
 
   MAP_STING(G);
 
-  OMP ("omp parallel for")
-    for (size_t k = 0; k < neb; ++k) {
+    stinger_parallel_for (size_t k = 0; k < neb; ++k) {
       struct stinger_eb * block = ebpool->ebpool + out[k];
       xzero (block, sizeof (*block));
       block->etype = etype;
@@ -965,8 +961,7 @@ new_blk_ebs (eb_index_t *out, const struct stinger *restrict G,
       block->largeStamp = INT64_MIN;
     }
 
-  OMP ("omp parallel for")
-    for (int64_t v = 0; v < nvtx; ++v) {
+    stinger_parallel_for (int64_t v = 0; v < nvtx; ++v) {
       const int64_t from = v;
       const size_t blkend = blkoff[v + 1];
       
@@ -1610,8 +1605,7 @@ stinger_set_initial_edges (struct stinger *G,
   MAP_STING(G);
 
   blkoff = xcalloc (nv + 1, sizeof (*blkoff));
-  OMP ("omp parallel for")
-  for (int64_t v = 0; v < nv; ++v) {
+  stinger_parallel_for (int64_t v = 0; v < nv; ++v) {
     const int64_t deg = off[v + 1] - off[v];
     blkoff[v + 1] = (deg + STINGER_EDGEBLOCKSIZE - 1) / STINGER_EDGEBLOCKSIZE;
   }
@@ -1625,8 +1619,7 @@ stinger_set_initial_edges (struct stinger *G,
 
   new_blk_ebs (&block[0], G, nv, blkoff, etype);
   
-  OMP ("omp parallel for")
-  for (int64_t v = 0; v < nv; ++v) {
+  stinger_parallel_for (int64_t v = 0; v < nv; ++v) {
     const size_t nextoff = off[v + 1];
     size_t kgraph = off[v];
      int64_t from;
@@ -2500,9 +2493,7 @@ stinger_save_to_file (struct stinger * S, uint64_t maxVtx, const char * stingerf
 
   for(int64_t type = 0; type < (S->max_netypes); type++) {
     struct stinger_eb * local_ebpool = ebpool->ebpool;
-    OMP("omp parallel for")
-    
-    for(uint64_t block = 0; block < ETA(S,type)->high; block++) {
+    stinger_parallel_for(uint64_t block = 0; block < ETA(S,type)->high; block++) {
       struct stinger_eb * cureb = local_ebpool + ETA(S, type)->blocks[block];
       int64_t num = cureb->numEdges;
       if (num) {
@@ -2533,9 +2524,7 @@ stinger_save_to_file (struct stinger * S, uint64_t maxVtx, const char * stingerf
 
   for(int64_t type = 0; type < (S->max_netypes); type++) {
     struct stinger_eb * local_ebpool = ebpool->ebpool;
-    OMP("omp parallel for")
-    
-    for(uint64_t block = 0; block < ETA(S,type)->high; block++) {
+    stinger_parallel_for(uint64_t block = 0; block < ETA(S,type)->high; block++) {
       struct stinger_eb * cureb = local_ebpool + ETA(S,type)->blocks[block];
       int64_t num = cureb->numEdges;
       if (num) {

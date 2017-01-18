@@ -120,7 +120,7 @@ extern "C" {
 #undef STINGER_RO_IS_IN_EDGE
 
 // Generic macro for iterating over all edges of a vertex. Edges are writable.
-#define STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,EDGE_FILTER_,EB_FILTER_,PARALLEL_)\
+#define STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,EDGE_FILTER_,EB_FILTER_,PARALLEL_FOR_)\
   do {                                                                                                    \
     MAP_STING(STINGER_);                                                                                  \
     struct stinger_eb * ebpool_priv = ebpool->ebpool;                                                     \
@@ -129,8 +129,7 @@ extern "C" {
       int64_t source__ = current_eb__->vertexID;                                                          \
       int64_t type__ = current_eb__->etype;                                                               \
       EB_FILTER_ {                                                                                        \
-        PARALLEL_                                                                                         \
-        for(uint64_t i__ = 0; i__ < stinger_eb_high(current_eb__); i__++) {                               \
+        PARALLEL_FOR_(uint64_t i__ = 0; i__ < stinger_eb_high(current_eb__); i__++) {                     \
           if(!stinger_eb_is_blank(current_eb__, i__)) {                                                   \
             struct stinger_edge * current_edge__ = current_eb__->edges + i__;                             \
             EDGE_FILTER_ {
@@ -146,88 +145,84 @@ extern "C" {
 
 // For all edges of vertex
 #define STINGER_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_) \
-  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,,,)
+  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,,,for)
 #define STINGER_FORALL_EDGES_OF_VTX_END() \
   STINGER_GENERIC_FORALL_EDGES_OF_VTX_END()
 
 // For all out-edges of vertex
 #define STINGER_FORALL_OUT_EDGES_OF_VTX_BEGIN(STINGER_,VTX_) \
-  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_OUT_EDGE),,)
+  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_OUT_EDGE),,for)
 #define STINGER_FORALL_OUT_EDGES_OF_VTX_END() \
   STINGER_GENERIC_FORALL_EDGES_OF_VTX_END()
 
 // For all in-edges of vertex
 #define STINGER_FORALL_IN_EDGES_OF_VTX_BEGIN(STINGER_,VTX_) \
-  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_IN_EDGE),,)
+  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_IN_EDGE),,for)
 #define STINGER_FORALL_IN_EDGES_OF_VTX_END() \
   STINGER_GENERIC_FORALL_EDGES_OF_VTX_END()
 
 // For all edges of vertex of a certain edge type
 #define STINGER_FORALL_EDGES_OF_TYPE_OF_VTX_BEGIN(STINGER_,TYPE_,VTX_) \
-  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,,if (current_eb__->etype == TYPE_),)
+  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,,if (current_eb__->etype == TYPE_),for)
 #define STINGER_FORALL_EDGES_OF_TYPE_OF_VTX_END() \
   STINGER_GENERIC_FORALL_EDGES_OF_VTX_END()
 
 // For all out-edges of vertex of a certain edge type
 #define STINGER_FORALL_OUT_EDGES_OF_TYPE_OF_VTX_BEGIN(STINGER_,TYPE_,VTX_) \
-  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_OUT_EDGE),if (current_eb__->etype == TYPE_),)
+  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_OUT_EDGE),if (current_eb__->etype == TYPE_),for)
 #define STINGER_FORALL_OUT_EDGES_OF_TYPE_OF_VTX_END() \
   STINGER_GENERIC_FORALL_EDGES_OF_VTX_END()
 
 // For all out-edges of vertex of a certain edge type
 #define STINGER_FORALL_IN_EDGES_OF_TYPE_OF_VTX_BEGIN(STINGER_,TYPE_,VTX_) \
-  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_IN_EDGE),if (current_eb__->etype == TYPE_),)
+  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_IN_EDGE),if (current_eb__->etype == TYPE_),for)
 #define STINGER_FORALL_IN_EDGES_OF_TYPE_OF_VTX_END() \
   STINGER_GENERIC_FORALL_EDGES_OF_VTX_END()
 
-#define STINGER_FORALL_ENABLE_PARALLEL_ \
-  OMP("omp parallel for")               \
-  
 
 // For all edges of vertex, in parallel
 #define STINGER_PARALLEL_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_) \
-  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,,,STINGER_FORALL_ENABLE_PARALLEL_)
+  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,,,stinger_parallel_for)
 #define STINGER_PARALLEL_FORALL_EDGES_OF_VTX_END() \
   STINGER_GENERIC_FORALL_EDGES_OF_VTX_END()
 
 // For all out-edges of vertex, in parallel
 #define STINGER_PARALLEL_FORALL_OUT_EDGES_OF_VTX_BEGIN(STINGER_,VTX_) \
-  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_OUT_EDGE),,STINGER_FORALL_ENABLE_PARALLEL_)
+  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_OUT_EDGE),,stinger_parallel_for)
 #define STINGER_PARALLEL_FORALL_OUT_EDGES_OF_VTX_END() \
   STINGER_GENERIC_FORALL_EDGES_OF_VTX_END()
 
 // For all in-edges of vertex, in parallel
 #define STINGER_PARALLEL_FORALL_IN_EDGES_OF_VTX_BEGIN(STINGER_,VTX_) \
-  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_IN_EDGE),,STINGER_FORALL_ENABLE_PARALLEL_)
+  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_IN_EDGE),,stinger_parallel_for)
 #define STINGER_PARALLEL_FORALL_IN_EDGES_OF_VTX_END() \
   STINGER_GENERIC_FORALL_EDGES_OF_VTX_END()
 
 // For all edges of vertex of a certain edge type, in parallel
 #define STINGER_PARALLEL_FORALL_EDGES_OF_TYPE_OF_VTX_BEGIN(STINGER_,TYPE_,VTX_) \
-  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,,if (current_eb__->etype == TYPE_),STINGER_FORALL_ENABLE_PARALLEL_)
+  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,,if (current_eb__->etype == TYPE_),stinger_parallel_for)
 #define STINGER_PARALLEL_FORALL_EDGES_OF_TYPE_OF_VTX_END() \
   STINGER_GENERIC_FORALL_EDGES_OF_VTX_END()
 
 // For all out-edges of vertex of a certain edge type, in parallel
 #define STINGER_PARALLEL_FORALL_OUT_EDGES_OF_TYPE_OF_VTX_BEGIN(STINGER_,TYPE_,VTX_) \
-  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_OUT_EDGE),if (current_eb__->etype == TYPE_),STINGER_FORALL_ENABLE_PARALLEL_)
+  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_OUT_EDGE),if (current_eb__->etype == TYPE_),stinger_parallel_for)
 #define STINGER_PARALLEL_FORALL_OUT_EDGES_OF_TYPE_OF_VTX_END() \
   STINGER_GENERIC_FORALL_EDGES_OF_VTX_END()
 
 // For all out-edges of vertex of a certain edge type, in parallel
 #define STINGER_PARALLEL_FORALL_IN_EDGES_OF_TYPE_OF_VTX_BEGIN(STINGER_,TYPE_,VTX_) \
-  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_IN_EDGE),if (current_eb__->etype == TYPE_),STINGER_FORALL_ENABLE_PARALLEL_)
+  STINGER_GENERIC_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,if (STINGER_IS_IN_EDGE),if (current_eb__->etype == TYPE_),stinger_parallel_for)
 #define STINGER_PARALLEL_FORALL_IN_EDGES_OF_TYPE_OF_VTX_END() \
   STINGER_GENERIC_FORALL_EDGES_OF_VTX_END()
 
 // Generic macro for iterating over all edges. Edges are writable.
-#define STINGER_GENERIC_FORALL_EDGES_BEGIN(STINGER_,SELECT_TYPE_,PARALLEL_) \
+#define STINGER_GENERIC_FORALL_EDGES_BEGIN(STINGER_,SELECT_TYPE_,PARALLEL_FOR_) \
   do {                                                                                        \
     MAP_STING(STINGER_);                                                                      \
     SELECT_TYPE_ { /* This sets t__ */                                                        \
       struct stinger_eb * ebpool_priv = ebpool->ebpool;                                       \
-      PARALLEL_                                                                               \
-      for(uint64_t p__ = 0; p__ < ETA((STINGER_),(t__))->high; p__++) {                       \
+      PARALLEL_FOR_(uint64_t p__ = 0; p__ < ETA((STINGER_),(t__))->high; p__++) {             \
         struct stinger_eb *  current_eb__ = ebpool_priv+ ETA((STINGER_),(t__))->blocks[p__];  \
         int64_t source__ = current_eb__->vertexID;                                            \
         int64_t type__ = current_eb__->etype;                                                 \
@@ -246,25 +241,25 @@ extern "C" {
 
 // For all edges of a given type
 #define STINGER_FORALL_EDGES_BEGIN(STINGER_,TYPE_) \
-  STINGER_GENERIC_FORALL_EDGES_BEGIN(STINGER_, uint64_t t__ = TYPE_;,)
+  STINGER_GENERIC_FORALL_EDGES_BEGIN(STINGER_, uint64_t t__ = TYPE_;,for)
 #define STINGER_FORALL_EDGES_END() \
   STINGER_GENERIC_FORALL_EDGES_END()
 
 // For all edges
 #define STINGER_FORALL_EDGES_OF_ALL_TYPES_BEGIN(STINGER_) \
-  STINGER_GENERIC_FORALL_EDGES_BEGIN(STINGER_,for (uint64_t t__ = 0; t__ < stinger_max_num_etypes(STINGER_); t__++),)
+  STINGER_GENERIC_FORALL_EDGES_BEGIN(STINGER_,for (uint64_t t__ = 0; t__ < stinger_max_num_etypes(STINGER_); t__++),for)
 #define STINGER_FORALL_EDGES_OF_ALL_TYPES_END() \
   STINGER_GENERIC_FORALL_EDGES_END()
 
 // For all edges of a given type, in parallel
 #define STINGER_PARALLEL_FORALL_EDGES_BEGIN(STINGER_,TYPE_) \
-  STINGER_GENERIC_FORALL_EDGES_BEGIN(STINGER_, uint64_t t__ = TYPE_;,STINGER_FORALL_ENABLE_PARALLEL_)
+  STINGER_GENERIC_FORALL_EDGES_BEGIN(STINGER_, uint64_t t__ = TYPE_;,stinger_parallel_for)
 #define STINGER_PARALLEL_FORALL_EDGES_END() \
   STINGER_GENERIC_FORALL_EDGES_END()
 
 // For all edges, in parallel
 #define STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_BEGIN(STINGER_) \
-  STINGER_GENERIC_FORALL_EDGES_BEGIN(STINGER_,for (uint64_t t__ = 0; t__ < stinger_max_num_etypes(STINGER_); t__++),STINGER_FORALL_ENABLE_PARALLEL_)
+  STINGER_GENERIC_FORALL_EDGES_BEGIN(STINGER_,for (uint64_t t__ = 0; t__ < stinger_max_num_etypes(STINGER_); t__++),stinger_parallel_for)
 #define STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_END() \
   STINGER_GENERIC_FORALL_EDGES_END()
 
@@ -332,6 +327,8 @@ extern "C" {
 
 
 // Generic macro for iterating over all edges of a vertex in parallel. Edges are read-only.
+// TODO The omp task construct here could be implemented as a cilk_spawn,
+// but we need to make it into a function to make the syntax work, and that would break the macro
 #define STINGER_GENERIC_READ_ONLY_PARALLEL_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,EDGE_FILTER_,EB_FILTER_) \
   do {                                                                                      \
     CONST_MAP_STING(STINGER_);                                                              \
@@ -428,8 +425,7 @@ extern "C" {
         const struct stinger * restrict S__ = (STINGER_);             \
         const int64_t etype__ = (TYPE_);                              \
         const struct stinger_eb * restrict ebp__ = ebpool->ebpool;	\
-        OMP("omp parallel for ")                                            \
-        for(uint64_t p__ = 0; p__ < ETA((STINGER_),(TYPE_))->high; p__++) { \
+        stinger_parallel_for(uint64_t p__ = 0; p__ < ETA((STINGER_),(TYPE_))->high; p__++) { \
           int64_t ebp_k__ = ETA((STINGER_),(TYPE_))->blocks[p__];          \
           const int64_t source__ = ebp__[ebp_k__].vertexID;         \
           const int64_t type__ = ebp__[ebp_k__].etype;              \

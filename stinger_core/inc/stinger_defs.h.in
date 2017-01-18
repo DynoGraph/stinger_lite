@@ -62,6 +62,7 @@ extern "C" {
 #include <sys/stat.h>
 #include <fcntl.h>
 
+// Enable OpenMP macros
 #if defined(_OPENMP)
 #include <omp.h>
 #if defined(OMP)
@@ -69,6 +70,7 @@ extern "C" {
 #endif
 #define OMP(x) _Pragma(x)
 #define OMP_SIMD
+// Disable OpenMP pragmas
 #else
 #if !defined(OMP)
 #define OMP(x)
@@ -76,6 +78,25 @@ extern "C" {
 #endif
 static inline int omp_get_num_threads (void) { return 1; }
 static inline int omp_get_thread_num (void) { return 0; }
+#endif
+
+// Enable Cilk keywords
+#if defined(__cilk)
+#include <cilk/cilk.h>
+// Disable Cilk keywords
+#else
+#define cilk_for for
+#define cilk_spawn
+#define cilk_sync
+#endif
+
+// Generic parallel for loop
+#if defined(_OPENMP)
+#define stinger_parallel_for OMP("omp parallel for") for
+#elif defined(__cilk)
+#define stinger_parallel_for cilk_for
+#else
+#define stinger_parallel_for for
 #endif
 
 #if defined(__GNUC__)

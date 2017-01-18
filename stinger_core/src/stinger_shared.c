@@ -236,8 +236,7 @@ stinger_shared_new_full (char ** out, struct stinger_config_t * config)
   ebpool->ebpool_tail = 1;
   ebpool->is_shared = 0;
 
-  OMP ("omp parallel for")
-  for (i = 0; i < netypes; ++i) {
+  stinger_parallel_for (i = 0; i < netypes; ++i) {
     ETA(G,i)->length = nebs;
     ETA(G,i)->high = 0;
   }
