@@ -25,7 +25,82 @@ static inline int64_t stinger_int64_cas (int64_t *, int64_t, int64_t);
    and people huddle and cry when they see caddr_t. */
 static inline void *stinger_ptr_cas (void **, void *, void *);
 
-#if defined(__GNUC__)||defined(__INTEL_COMPILER)
+// Emu architecture
+// TODO is this the right symbol to check?
+// Seems like a lot of the symbols are still set for x86
+#if defined(__le64__)
+
+#include <memoryweb.h>
+
+void
+stinger_memory_barrier()
+{
+  // Wait for remote memory writes to complete
+  FENCE();
+  // Local memory accesses are in-order, so no other fence necessary
+}
+
+int
+stinger_int_fetch_add (int *x, int i)
+{
+  // BUG: intrinsics only available for 64-bit types
+  assert(sizeof(int) == 8);
+  return ATOMIC_ADDMS(x, i);
+}
+
+int64_t
+stinger_int64_fetch_add (int64_t * x, int64_t i)
+{
+  return ATOMIC_ADDMS(x, i);
+}
+
+uint64_t
+stinger_uint64_fetch_add (uint64_t * x, uint64_t i)
+{
+  return ATOMIC_ADDMS(x, i);
+}
+
+size_t
+stinger_size_fetch_add (size_t * x, size_t i)
+{
+  return ATOMIC_ADDMS(x, i);
+}
+
+void
+stinger_int64_swap (int64_t * x, int64_t * y)
+{
+  int64_t vx;
+  do
+    {
+      vx = *x;
+    }
+  while (ATOMIC_CAS(x, *y, vx) != vx);
+}
+
+void
+stinger_uint64_swap (uint64_t * x, uint64_t * y)
+{
+  uint64_t vx;
+  do
+    {
+      vx = *x;
+    }
+  while (ATOMIC_CAS(x, *y, vx) != vx);
+}
+
+void *
+stinger_ptr_cas (void **x, void *origx, void *newx)
+{
+  return ATOMIC_CAS(x, newx, origx);
+}
+
+int64_t
+stinger_int64_cas (int64_t * x, int64_t origx, int64_t newx)
+{
+  return ATOMIC_CAS(x, newx, origx);
+}
+
+#elif defined(__GNUC__)||defined(__INTEL_COMPILER)
 /* {{{ GCC / ICC defs */
 void
 stinger_memory_barrier()
