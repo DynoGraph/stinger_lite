@@ -1,0 +1,4 @@
+[submodule "lib/dynograph_util"]
+	path = lib/dynograph_util
+	url = git@github.com:DynoGraph/dynograph_util.git
+	branch = c-only
