@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 2.8.11)
+set(CMAKE_USER_MAKE_RULES_OVERRIDE "cmake/emu-rules.cmake")
 project(stinger_core C)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu9x")
