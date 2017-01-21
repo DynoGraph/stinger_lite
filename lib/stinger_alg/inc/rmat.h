@@ -2,6 +2,7 @@
 #define STINGER_RMAT_H_
 
 #include "random.h"
+#include <inttypes.h>
 
 void
 rmat_edge (int64_t * iout, int64_t * jout,
