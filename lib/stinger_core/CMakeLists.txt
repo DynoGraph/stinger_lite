@@ -1,19 +1,3 @@
-cmake_minimum_required(VERSION 2.8.11)
-project(stinger_core C)
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu9x")
-
-# Memory size configuration bits for stinger_core
-set(STINGER_DEFAULT_VERTICES "(1L<<24)" CACHE STRING "Default number of vertices")
-set(STINGER_DEFAULT_NUMETYPES "5" CACHE STRING "Default number of edge types")
-set(STINGER_DEFAULT_NUMVTYPES "128" CACHE STRING "Default number of vertex types")
-set(STINGER_DEFAULT_NEB_FACTOR "4" CACHE STRING "Default number of edge blocks per vertex")
-set(STINGER_EDGEBLOCKSIZE "14" CACHE STRING "Number of edges per edge block")
-set(STINGER_NAME_STR_MAX "255" CACHE STRING "Max string length in physmap")
-
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/inc/stinger_defs.h.in ${CMAKE_BINARY_DIR}/include/stinger_defs.h @ONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/inc/stinger_names.h.in ${CMAKE_BINARY_DIR}/include/stinger_names.h @ONLY)
-
 set(sources
 	src/core_util.c
 	src/stinger.c
@@ -54,6 +38,9 @@ set(config
 	${CMAKE_BINARY_DIR}/include/stinger_defs.h
 )
 
-include_directories(inc ${CMAKE_BINARY_DIR}/include )
+publish_headers(headers "${CMAKE_BINARY_DIR}/include/stinger_core")
+
+include_directories("${CMAKE_BINARY_DIR}/include/stinger_core")
+
 set_source_files_properties(${config} PROPERTIES GENERATED TRUE)
 add_library(stinger_core ${sources} ${headers} ${config})
