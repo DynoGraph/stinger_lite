@@ -1,6 +1,14 @@
 #include <stdio.h>
 #include <stinger_core/stinger.h>
 #include <stinger_core/stinger_internal.h>
+#include <stinger_core/core_util.h>
+//#include <stinger_alg/bfs.h>
+#include <stinger_alg/betweenness.h>
+#include <stinger_alg/clustering.h>
+#include <stinger_alg/static_components.h>
+#include <stinger_alg/kcore.h>
+#include <stinger_alg/pagerank.h>
+
 #include <dynograph_util.h>
 #include <hooks_c.h>
 
@@ -12,8 +20,7 @@ generate_stinger_config(int64_t nv) {
 
     // Start with size we will try to fill
     // Scaled by 75% because that's what stinger_new_full does
-    //uint64_t sz = ((uint64_t)stinger_max_memsize() * 3)/4;
-    uint64_t sz = 1024 * 1024; // FIXME pick memory size
+    size_t sz = ((uint64_t)stinger_max_memsize() * 3)/4;
 
     // Subtract storage for vertices
     sz -= stinger_vertices_size(nv);
@@ -59,7 +66,7 @@ insert_batch(struct stinger *S, struct dynograph_edge_batch batch)
     const int64_t type = 0;
     const bool directed = batch.directed;
 
-    stinger_parallel_for (int64_t i = 0; i < batch.num_edges; ++i)
+    for (int64_t i = 0; i < batch.num_edges; ++i)
     {
         const struct dynograph_edge *e = &batch.edges[i];
         if (directed)
@@ -80,10 +87,108 @@ void record_graph_size(struct stinger *S)
     hooks_set_attr_i64("num_edges", num_edges);
 }
 
-void update_alg(struct stinger *S, const char *alg_name, int64_t* sources, int64_t num_sources)
+struct alg
 {
-    // FIXME
+    const char *name;
+    int64_t data_per_vertex;
+    // Number of optional args?
+} algs[] = {
+    {"all", 4}, // Must be = max(data_per_vertex) of all other algorithms
+//    {"bfs", 4},
+//    {"bfs-do", 4},
+    {"bc", 2},
+    {"clustering", 1},
+    {"cc", 1},
+    {"kcore", 2},
+    {"pagerank", 2}
+};
+
+struct alg *
+get_alg(const char *name)
+{
+    struct alg *b = NULL;
+    for (int i = 0; i < sizeof(algs) / sizeof(algs[0]); ++i)
+    {
+        if (!strcmp(algs[i].name, name))
+        {
+            b = &algs[i];
+            break;
+        }
+    }
+    if (b == NULL)
+    {
+        dynograph_message("Alg '%s' not implemented!", name);
+        dynograph_die();
+    }
+    return b;
 }
+
+void run_alg(stinger_t * S, const char *alg_name, int64_t num_vertices, void *alg_data, int64_t source_vertex)
+{
+    int64_t max_nv = stinger_max_nv(S);
+    if (false) {}
+    // else if (!strcmp(alg_name, "bfs"))
+    // {
+    //     int64_t * marks = (int64_t*)alg_data + 0 * max_nv;
+    //     int64_t * queue = (int64_t*)alg_data + 1 * max_nv;
+    //     int64_t * Qhead = (int64_t*)alg_data + 2 * max_nv;
+    //     int64_t * level = (int64_t*)alg_data + 3 * max_nv;
+    //     int64_t levels = parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
+
+    //     if (levels < 5)
+    //     {
+    //         dynograph_message("WARNING: Breadth-first search was only %ld levels. Consider choosing a different source vertex.", levels);
+    //     }
+    // }
+    // else if (!strcmp(alg_name, "bfs-do"))
+    // {
+    //     int64_t * marks = (int64_t*)alg_data + 0 * max_nv;
+    //     int64_t * queue = (int64_t*)alg_data + 1 * max_nv;
+    //     int64_t * Qhead = (int64_t*)alg_data + 2 * max_nv;
+    //     int64_t * level = (int64_t*)alg_data + 3 * max_nv;
+    //     int64_t levels = direction_optimizing_parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
+
+    //     if (levels < 5)
+    //     {
+    //         dynograph_message("WARNING: Breadth-first search was only %ld levels. Consider choosing a different source vertex.", levels);
+    //     }
+    // }
+    else if (!strcmp(alg_name, "bc"))
+    {
+        double *bc =            (double*) alg_data + 0 * max_nv;
+        int64_t *found_count =  (int64_t*)alg_data + 1 * max_nv;
+        int64_t num_samples = 128; // FIXME Pick samples from highest degree
+        sample_search(S, num_vertices, num_samples, bc, found_count);
+    }
+    else if (!strcmp(alg_name, "clustering"))
+    {
+        int64_t *num_triangles = (int64_t*) alg_data + 0 * max_nv;
+        count_all_triangles(S, num_triangles);
+    }
+    else if (!strcmp(alg_name, "cc"))
+    {
+        int64_t *component_map = (int64_t*) alg_data + 0 * max_nv;
+        parallel_shiloach_vishkin_components(S, num_vertices, component_map);
+    }
+    else if (!strcmp(alg_name, "kcore"))
+    {
+        int64_t *labels = (int64_t*) alg_data + 0 * max_nv;
+        int64_t *counts = (int64_t*) alg_data + 1 * max_nv;
+        int64_t k = 0;
+        kcore_find(S, labels, counts, num_vertices, &k);
+    }
+    else if (!strcmp(alg_name, "pagerank"))
+    {
+        double * pagerank_scores =      (double*)alg_data + 0 * max_nv;
+        double * pagerank_scores_tmp =  (double*)alg_data + 1 * max_nv;
+        page_rank_directed(S, num_vertices, pagerank_scores, pagerank_scores_tmp, 1e-8, 0.85, 100);
+    }
+    else
+    {
+        dynograph_error("Algorithm %s not implemented!", alg_name);
+    }
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -92,16 +197,21 @@ int main(int argc, char *argv[])
 
     dynograph_message("Loading dataset...");
     // FIXME replace num_batches with batch_size
-    struct dynograph_dataset* dataset = dynograph_load_dataset(args.input_path, 10);
+    struct dynograph_dataset* dataset = dynograph_load_dataset(&args);
+    // Look up the algorithm that will be benchmarked
+    struct alg *alg = get_alg(args.alg_names);
 
     for (int64_t trial = 0; trial < args.num_trials; trial++)
     {
         hooks_set_attr_i64("trial", trial);
 
         dynograph_message("Initializing stinger...");
-        const int64_t nv = 50; // FIXME get nv from dataset
-        struct stinger_config_t config = generate_stinger_config(dataset->max_vertex_id);
+        int64_t nv = dataset->max_vertex_id + 1;
+        struct stinger_config_t config = generate_stinger_config(nv);
         struct stinger *S = stinger_new_full(&config);
+
+        // Allocate data structures for the algorithm(s)
+        void *alg_data = xcalloc(sizeof(int64_t) * alg->data_per_vertex, nv);
 
         // Run the algorithm(s) after each inserted batch
         int64_t epoch = 0;
@@ -135,29 +245,30 @@ int main(int argc, char *argv[])
             //if (dataset.enableAlgsForBatch(batch_id))
             {
                 record_graph_size(S);
-
+                const char *alg_name = args.alg_names;
                 // FIXME implement multiple algs
                 //for (std::string alg_name : args.alg_names)
                 {
                     int64_t num_sources = 1;
                     //int64_t source = pick_sources_for_alg(S, alg_name);
-                    int64_t source = 3; // FIXME pick source
-                    hooks_set_attr_i64("source_vertex", source);
-                    const char* alg_name = args.alg_names[0];
+                    int64_t source_vertex = 3; // FIXME pick source
+                    hooks_set_attr_i64("source_vertex", source_vertex);
                     dynograph_message("Running %s", alg_name);
                     hooks_region_begin(alg_name);
-                    update_alg(S, alg_name, &source, num_sources);
+                    run_alg(S, alg_name, nv, alg_data, source_vertex);
                     hooks_region_end();
                 }
                 epoch += 1;
-                assert(epoch <= args.num_epochs);
+                //assert(epoch <= args.num_epochs);
             }
 
         }
-        assert(epoch == args.num_epochs);
+        //assert(epoch == args.num_epochs);
         dynograph_message("Shutting down stinger...");
         stinger_free(S);
     }
+
+    dynograph_free_dataset(dataset);
 
     return 0;
 }
