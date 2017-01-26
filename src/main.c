@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 
             struct dynograph_edge_batch batch = dynograph_get_batch(dataset, batch_id);
 
-            int64_t threshold = dynograph_get_timestamp_for_window(dataset, batch_id);
+            int64_t threshold = dynograph_get_timestamp_for_window(dataset, &batch);
 
             if (args.window_size != 1.0 && args.sort_mode != SNAPSHOT)
             {
@@ -275,8 +275,7 @@ int main(int argc, char *argv[])
             insert_batch(S, batch);
             hooks_region_end();
 
-            // FIXME implement epoch calculation
-            //if (dataset.enableAlgsForBatch(batch_id))
+            if (dynograph_enable_algs_for_batch(dataset, batch_id))
             {
                 record_graph_size(S);
                 const char *alg_name = args.alg_names;
@@ -293,11 +292,11 @@ int main(int argc, char *argv[])
                     hooks_region_end();
                 }
                 epoch += 1;
-                //assert(epoch <= args.num_epochs);
+                assert(epoch <= args.num_epochs);
             }
 
         }
-        //assert(epoch == args.num_epochs);
+        assert(epoch == args.num_epochs);
         dynograph_message("Shutting down stinger...");
         stinger_free(S);
     }
