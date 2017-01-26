@@ -2,7 +2,7 @@
 #include <stinger_core/stinger.h>
 #include <stinger_core/stinger_internal.h>
 #include <stinger_core/core_util.h>
-//#include <stinger_alg/bfs.h>
+#include <stinger_alg/bfs.h>
 #include <stinger_alg/betweenness.h>
 #include <stinger_alg/clustering.h>
 #include <stinger_alg/static_components.h>
@@ -94,8 +94,8 @@ struct alg
     // Number of optional args?
 } algs[] = {
     {"all", 4}, // Must be = max(data_per_vertex) of all other algorithms
-//    {"bfs", 4},
-//    {"bfs-do", 4},
+    {"bfs", 4},
+    {"bfs-do", 4},
     {"bc", 2},
     {"clustering", 1},
     {"cc", 1},
@@ -162,32 +162,30 @@ void run_alg(stinger_t * S, const char *alg_name, int64_t num_vertices, void *al
 {
     int64_t max_nv = stinger_max_nv(S);
     if (false) {}
-    // else if (!strcmp(alg_name, "bfs"))
-    // {
-    //     int64_t * marks = (int64_t*)alg_data + 0 * max_nv;
-    //     int64_t * queue = (int64_t*)alg_data + 1 * max_nv;
-    //     int64_t * Qhead = (int64_t*)alg_data + 2 * max_nv;
-    //     int64_t * level = (int64_t*)alg_data + 3 * max_nv;
-    //     int64_t levels = parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
-
-    //     if (levels < 5)
-    //     {
-    //         dynograph_message("WARNING: Breadth-first search was only %ld levels. Consider choosing a different source vertex.", levels);
-    //     }
-    // }
-    // else if (!strcmp(alg_name, "bfs-do"))
-    // {
-    //     int64_t * marks = (int64_t*)alg_data + 0 * max_nv;
-    //     int64_t * queue = (int64_t*)alg_data + 1 * max_nv;
-    //     int64_t * Qhead = (int64_t*)alg_data + 2 * max_nv;
-    //     int64_t * level = (int64_t*)alg_data + 3 * max_nv;
-    //     int64_t levels = direction_optimizing_parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level, modified_after);
-
-    //     if (levels < 5)
-    //     {
-    //         dynograph_message("WARNING: Breadth-first search was only %ld levels. Consider choosing a different source vertex.", levels);
-    //     }
-    // }
+    else if (!strcmp(alg_name, "bfs"))
+    {
+        int64_t * marks = (int64_t*)alg_data + 0 * max_nv;
+        int64_t * queue = (int64_t*)alg_data + 1 * max_nv;
+        int64_t * Qhead = (int64_t*)alg_data + 2 * max_nv;
+        int64_t * level = (int64_t*)alg_data + 3 * max_nv;
+        int64_t levels = parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level);
+        if (levels < 5)
+        {
+            dynograph_message("WARNING: Breadth-first search was only %ld levels. Consider choosing a different source vertex.", levels);
+        }
+    }
+    else if (!strcmp(alg_name, "bfs-do"))
+    {
+        int64_t * marks = (int64_t*)alg_data + 0 * max_nv;
+        int64_t * queue = (int64_t*)alg_data + 1 * max_nv;
+        int64_t * Qhead = (int64_t*)alg_data + 2 * max_nv;
+        int64_t * level = (int64_t*)alg_data + 3 * max_nv;
+        int64_t levels = direction_optimizing_parallel_breadth_first_search (S, num_vertices, source_vertex, marks, queue, Qhead, level);
+        if (levels < 5)
+        {
+            dynograph_message("WARNING: Breadth-first search was only %ld levels. Consider choosing a different source vertex.", levels);
+        }
+    }
     else if (!strcmp(alg_name, "bc"))
     {
         double *bc =            (double*) alg_data + 0 * max_nv;
