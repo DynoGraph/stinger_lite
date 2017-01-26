@@ -6,7 +6,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu9x")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu9x")
 
 # Memory size configuration bits for stinger_core
 set(STINGER_DEFAULT_VERTICES "(1L<<24)" CACHE STRING "Default number of vertices")
@@ -39,13 +39,6 @@ function(publish_headers header_list destination)
 endfunction()
 
 include_directories("${CMAKE_BINARY_DIR}/include")
-
-set(LLVM_CILK_HOME "/home1/tdysart/Emu1-Nightly/llvm-cilk")
-set(MEMWEB_INSTALL "${LLVM_CILK_HOME}/memoryweb-libraries/memoryweb/install")
-set(LIBC_INSTALL "${LLVM_CILK_HOME}/memoryweb-libraries/musl/install")
-
-link_directories("${LIBC_INSTALL}/lib" "${MEMWEB_INSTALL}/lib")
-link_libraries(memoryweb muslc)
 
 add_subdirectory(lib)
 add_subdirectory(src)
