@@ -269,8 +269,7 @@ extern "C" {
     MAP_STING(STINGER_);                                                                      \
     for (uint64_t t__ = 0; t__ < stinger_max_num_etypes(STINGER_); t__++) {                   \
       struct stinger_eb * ebpool_priv = ebpool->ebpool;                                       \
-      STINGER_FORALL_ENABLE_PARALLEL_                                                         \
-      for(uint64_t p__ = 0; p__ < ETA((STINGER_),(t__))->high; p__++) {                       \
+      stinger_parallel_for(uint64_t p__ = 0; p__ < ETA((STINGER_),(t__))->high; p__++) {                       \
         struct stinger_eb *  current_eb__ = ebpool_priv+ ETA((STINGER_),(t__))->blocks[p__];  \
         int64_t source__ = current_eb__->vertexID;                                            \
         int64_t type__ = current_eb__->etype;                                                 \
