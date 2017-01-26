@@ -123,6 +123,41 @@ get_alg(const char *name)
     return b;
 }
 
+struct vertex_degree {
+    int64_t vertex_id;
+    int64_t degree;
+};
+
+int compare_vertex_degree(const void * lhs, const void * rhs)
+{
+    const struct vertex_degree a = *(struct vertex_degree *)lhs;
+    const struct vertex_degree b = *(struct vertex_degree *)rhs;
+
+    if (a.degree < b.degree) return -1;
+    if (a.degree > b.degree) return 1;
+
+    if (a.vertex_id < b.vertex_id) return -1;
+    if (a.vertex_id > b.vertex_id) return 1;
+
+    return 0;
+}
+
+int64_t highest_degree_vertex(const struct stinger *S)
+{
+    int64_t nv = stinger_max_nv(S);
+    if (nv == 0) { return 0; }
+    struct vertex_degree *vertex_degrees = xcalloc(sizeof(struct vertex_degree), nv);
+    stinger_parallel_for(int64_t v = 0; v < nv; ++v)
+    {
+        vertex_degrees[v].vertex_id = v;
+        vertex_degrees[v].degree = stinger_outdegree_get(S, v);
+    }
+    qsort(vertex_degrees, nv, sizeof(int64_t), compare_vertex_degree);
+    int64_t vertex_id = vertex_degrees[nv-1].vertex_id;
+    free(vertex_degrees);
+    return vertex_id;
+}
+
 void run_alg(stinger_t * S, const char *alg_name, int64_t num_vertices, void *alg_data, int64_t source_vertex)
 {
     int64_t max_nv = stinger_max_nv(S);
@@ -196,7 +231,6 @@ int main(int argc, char *argv[])
     dynograph_args_parse(argc, argv, &args);
 
     dynograph_message("Loading dataset...");
-    // FIXME replace num_batches with batch_size
     struct dynograph_dataset* dataset = dynograph_load_dataset(&args);
     // Look up the algorithm that will be benchmarked
     struct alg *alg = get_alg(args.alg_names);
@@ -249,9 +283,9 @@ int main(int argc, char *argv[])
                 // FIXME implement multiple algs
                 //for (std::string alg_name : args.alg_names)
                 {
+                    // TODO implement multiple sources for BC
                     int64_t num_sources = 1;
-                    //int64_t source = pick_sources_for_alg(S, alg_name);
-                    int64_t source_vertex = 3; // FIXME pick source
+                    int64_t source_vertex = highest_degree_vertex(S);
                     hooks_set_attr_i64("source_vertex", source_vertex);
                     dynograph_message("Running %s", alg_name);
                     hooks_region_begin(alg_name);
