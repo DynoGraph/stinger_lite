@@ -56,7 +56,15 @@ generate_stinger_config(int64_t nv) {
 void
 delete_edges_older_than(struct stinger *S, int64_t threshold)
 {
-    // FIXME
+    STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_BEGIN(S)
+    {
+        hooks_traverse_edges(1);
+        if (STINGER_EDGE_TIME_RECENT < threshold) {
+            // Delete the edge
+            update_edge_data_and_direction (S, current_eb__, i__, ~STINGER_EDGE_DEST, 0, 0, STINGER_EDGE_DIRECTION, EDGE_WEIGHT_SET);
+        }
+    }
+    STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_END();
 }
 
 void

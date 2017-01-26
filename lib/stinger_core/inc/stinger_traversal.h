@@ -263,6 +263,29 @@ extern "C" {
 #define STINGER_PARALLEL_FORALL_EDGES_OF_ALL_TYPES_END() \
   STINGER_GENERIC_FORALL_EDGES_END()
 
+// HACK Just like STINGER_GENERIC_FORALL_EDGES, but includes in and out edges so we can delete both of them
+#define STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_BEGIN(STINGER_)                                 \
+  do {                                                                                        \
+    MAP_STING(STINGER_);                                                                      \
+    for (uint64_t t__ = 0; t__ < stinger_max_num_etypes(STINGER_); t__++) {                   \
+      struct stinger_eb * ebpool_priv = ebpool->ebpool;                                       \
+      STINGER_FORALL_ENABLE_PARALLEL_                                                         \
+      for(uint64_t p__ = 0; p__ < ETA((STINGER_),(t__))->high; p__++) {                       \
+        struct stinger_eb *  current_eb__ = ebpool_priv+ ETA((STINGER_),(t__))->blocks[p__];  \
+        int64_t source__ = current_eb__->vertexID;                                            \
+        int64_t type__ = current_eb__->etype;                                                 \
+        for(uint64_t i__ = 0; i__ < stinger_eb_high(current_eb__); i__++) {                   \
+          if(!stinger_eb_is_blank(current_eb__, i__)) {                                       \
+            struct stinger_edge * current_edge__ = current_eb__->edges + i__;                 \
+            hooks_traverse_edges(1);
+#define STINGER_RAW_FORALL_EDGES_OF_ALL_TYPES_END()  \
+          } /* end if eb is blank */        \
+        } /* end for edges in eb */         \
+      } /* for each edge of type t__ */     \
+    } /* END_SELECT_TYPE */                 \
+  } while (0)
+
+
 // Generic macro for iterating over all edges of a vertex. Edges are read-only.
 #define STINGER_GENERIC_READ_ONLY_FORALL_EDGES_OF_VTX_BEGIN(STINGER_,VTX_,EDGE_FILTER_,EB_FILTER_) \
   do {                                                                                  \

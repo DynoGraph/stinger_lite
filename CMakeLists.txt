@@ -6,7 +6,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu9x")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu9x -Wall")
 
 # Memory size configuration bits for stinger_core
 set(STINGER_DEFAULT_VERTICES "(1L<<24)" CACHE STRING "Default number of vertices")
