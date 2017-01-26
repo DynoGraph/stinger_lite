@@ -27,7 +27,7 @@
  */
 size_t getMemorySize( )
 {
-	return 0;
+	return 64 * 1024 * 1024;
 // #if defined(_WIN32) && (defined(__CYGWIN__) || defined(__CYGWIN32__))
 // 	/* Cygwin under Windows. ------------------------------------ */
 // 	/* New 64-bit MEMORYSTATUSEX isn't available.  Use old 32.bit */
