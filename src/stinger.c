@@ -92,7 +92,7 @@ stinger_indegree_increment_atomic(const stinger_t * S, vindex_t v, vdegree_t d) 
 
 inline vdegree_t
 stinger_outdegree_get(const stinger_t * S, vindex_t v) {
-     return ((const stinger_vertices_t*)(S->storage))->vertices[v].outDegree;
+  return stinger_vertex_outdegree_get(stinger_vertices_get(S), v);
 }
 
 inline vdegree_t
@@ -335,7 +335,7 @@ const struct stinger_eb *
 stinger_next_eb (const struct stinger *G,
                  const struct stinger_eb *eb_)
 {
-  const struct stinger_ebpool * ebpool = (const struct stinger_ebpool *)(G->storage + G->ebpool_start);
+  CONST_MAP_STING(G);
   return ebpool->ebpool + readff((uint64_t *)&eb_->next);
 }
 
@@ -746,10 +746,44 @@ stinger_fragmentation (struct stinger *S, uint64_t NV, struct stinger_fragmentat
 
 /* {{{ Allocating and tearing down */
 
+struct stinger_ebpool *
+stinger_ebpool_new(int64_t nebs)
+{
+  struct stinger_ebpool * ebpool;
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
+  ebpool = xcalloc(sizeof(struct stinger_ebpool) + nebs * sizeof(struct stinger_eb), 1);
+#else
+  ebpool = xcalloc(sizeof(struct stinger_ebpool), 1);
+  ebpool->ebpool = xcalloc(nebs, sizeof(struct stinger_eb));
+#endif
+  stinger_ebpool_init(ebpool);
+  return ebpool;
+}
+
+void
+stinger_ebpool_init(struct stinger_ebpool * ebpool)
+{
+  ebpool->ebpool_tail = 1;
+  ebpool->is_shared = 0;
+}
+
 size_t
 stinger_ebpool_size(int64_t nebs)
 {
   return (sizeof(struct stinger_ebpool) + nebs * sizeof(struct stinger_eb));
+}
+
+struct stinger_etype_array*
+stinger_etype_array_new(int64_t nebs, int64_t netypes)
+{
+  struct stinger_etype_array* eta;
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
+  eta = xcalloc(sizeof(struct stinger_etype_array) + nebs * sizeof(eb_index_t), netypes);
+#else
+  eta = xcalloc(sizeof(struct stinger_etype_array), 1);
+  eta->blocks = xcalloc(nebs * netypes, sizeof(eb_index_t));
+#endif
+  return eta;
 }
 
 size_t
@@ -758,6 +792,8 @@ stinger_etype_array_size(int64_t nebs)
   return (sizeof(struct stinger_etype_array) + nebs * sizeof(eb_index_t));
 }
 
+
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
 /** @brief Create a new STINGER data structure.
  *
  *  Allocates memory for a STINGER data structure.  If this is the first STINGER
@@ -845,6 +881,70 @@ struct stinger *stinger_new_full (struct stinger_config_t * config)
   return G;
 }
 
+#else // !defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
+
+/** @brief Create a new STINGER data structure.
+ *
+ *  Allocates memory for a STINGER data structure.
+ *
+ *  Unlike stinger_new_full, each sub-structure is allocated separately
+ *
+ *  @return Pointer to struct stinger
+ */
+
+struct stinger *stinger_new_full (struct stinger_config_t * config)
+{
+    int64_t nv      = config->nv      ? config->nv      : STINGER_DEFAULT_VERTICES;
+    int64_t nebs    = config->nebs    ? config->nebs    : STINGER_DEFAULT_NEB_FACTOR * nv;
+    int64_t netypes = config->netypes ? config->netypes : STINGER_DEFAULT_NUMETYPES;
+    int64_t nvtypes = config->nvtypes ? config->nvtypes : STINGER_DEFAULT_NUMVTYPES;
+
+    // FIXME make sure stinger will fit in memory
+
+    struct stinger *G = xcalloc (sizeof(struct stinger), 1);
+
+    G->max_nv       = nv;
+    G->max_neblocks = nebs;
+    G->max_netypes  = netypes;
+    G->max_nvtypes  = nvtypes;
+
+    G->vertices = stinger_vertices_new(nv);
+    G->physmap = stinger_physmap_new(nv);
+    G->etype_names = stinger_names_new(netypes);
+    G->vtype_names = stinger_names_new(nvtypes);
+    G->ETA = stinger_etype_array_new(nebs, netypes);
+    G->ebpool = stinger_ebpool_new(nebs);
+
+    //G->length = sizes.size;
+
+    MAP_STING(G);
+
+    int64_t zero = 0;
+    stinger_vertices_init(vertices, nv);
+    stinger_physmap_init(physmap, nv);
+    stinger_names_init(etype_names, netypes);
+    if (!config->no_map_none_etype) {
+        stinger_names_create_type(etype_names, "None", &zero);
+    }
+    stinger_names_init(vtype_names, nvtypes);
+    if (!config->no_map_none_vtype) {
+        stinger_names_create_type(vtype_names, "None", &zero);
+    }
+
+    stinger_ebpool_init(ebpool);
+
+    //stinger_etype_array_init(_ETA);
+    OMP ("omp parallel for")
+    for (size_t i = 0; i < netypes; ++i) {
+      ETA(G,i)->length = nebs;
+      ETA(G,i)->high = 0;
+    }
+
+
+    return G;
+}
+
+#endif
 
 /** @brief Create a new STINGER data structure.
  *

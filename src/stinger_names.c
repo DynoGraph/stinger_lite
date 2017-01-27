@@ -74,11 +74,18 @@ xor_hash(uint8_t * byte_string, int64_t length) {
  */
 stinger_names_t * 
 stinger_names_new(int64_t max_types) {
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
   stinger_names_t * sn = xcalloc(sizeof(stinger_names_t) + 
       (max_types * (NAME_STR_MAX+1) * sizeof(char)) +  /* strings */
       (max_types * sizeof(int64_t) * 3) + /* from_name + to_name */
       (max_types * sizeof(int64_t) * 2), sizeof(uint8_t)); /* to_int */
-
+#else
+  stinger_names_t * sn = xcalloc(sizeof(stinger_names_t), 1);
+  sn->storage = xcalloc(
+      (max_types * (NAME_STR_MAX+1) * sizeof(char)) +  /* strings */
+      (max_types * sizeof(int64_t) * 3) + /* from_name + to_name */
+      (max_types * sizeof(int64_t) * 2), sizeof(uint8_t)); /* to_int */
+#endif
   stinger_names_init(sn, max_types);
 
   return sn;
@@ -155,6 +162,9 @@ stinger_names_size(int64_t max_types) {
 stinger_names_t *
 stinger_names_free(stinger_names_t ** sn) {
   if(sn && *sn) {
+#ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
+    free ((*sn)->storage);
+#endif
     free(*sn);
     *sn = NULL;
   }

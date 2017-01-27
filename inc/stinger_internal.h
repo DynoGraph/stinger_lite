@@ -11,6 +11,8 @@ extern "C" {
 #define STINGER_EDGE_DIRECTION_IN (0x2000000000000000L)
 #define STINGER_EDGE_DIRECTION_BOTH (0x6000000000000000L)
 
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
+
 #define MAP_STING(X) \
   stinger_vertices_t * vertices = (stinger_vertices_t *)((X)->storage); \
   stinger_physmap_t * physmap = (stinger_physmap_t *)((X)->storage + (X)->physmap_start); \
@@ -18,7 +20,7 @@ extern "C" {
   stinger_names_t * vtype_names = (stinger_names_t *)((X)->storage + (X)->vtype_names_start); \
   uint8_t * _ETA = ((X)->storage + (X)->ETA_start); \
   struct stinger_ebpool * ebpool = (struct stinger_ebpool *)((X)->storage + (X)->ebpool_start);
-	  
+
 #define CONST_MAP_STING(X) \
   const stinger_vertices_t * vertices = (const stinger_vertices_t *)((X)->storage); \
   const stinger_physmap_t * physmap = (const stinger_physmap_t *)((X)->storage + (X)->physmap_start); \
@@ -26,6 +28,26 @@ extern "C" {
   const stinger_names_t * vtype_names = (const stinger_names_t *)((X)->storage + (X)->vtype_names_start); \
   const uint8_t * _ETA = ((X)->storage + (X)->ETA_start); \
   const struct stinger_ebpool * ebpool = (const struct stinger_ebpool *)((X)->storage + (X)->ebpool_start);
+
+#else // !defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
+
+#define MAP_STING(X) \
+  stinger_vertices_t * vertices = (X)->vertices; \
+  stinger_physmap_t * physmap = (X)->physmap; \
+  stinger_names_t * etype_names = (X)->etype_names; \
+  stinger_names_t * vtype_names = (X)->vtype_names; \
+  uint8_t * _ETA = (X)->ETA; \
+  struct stinger_ebpool * ebpool = (X)->ebpool;
+
+#define CONST_MAP_STING(X) \
+  const stinger_vertices_t * vertices = (X)->vertices; \
+  const stinger_physmap_t * physmap = (X)->physmap; \
+  const stinger_names_t * etype_names = (X)->etype_names; \
+  const stinger_names_t * vtype_names = (X)->vtype_names; \
+  const uint8_t * _ETA = (X)->ETA; \
+  const struct stinger_ebpool * ebpool = (X)->ebpool;
+
+#endif // STINGER_USE_CONTIGUOUS_ALLOCATION
 
 #define ETA(X,Y) ((struct stinger_etype_array *)(_ETA + ((Y)*stinger_etype_array_size((X)->max_neblocks))))
 
@@ -107,13 +129,21 @@ struct stinger_etype_array
 {
   int64_t length;     /**< Length of the edge type array */
   int64_t high;	      /**< High water mark in the edge type array */
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
   eb_index_t blocks[0];  /**< The edge type array itself, an array of edge block pointers */
+#else
+  eb_index_t *blocks;  /**< The edge type array itself, an array of edge block pointers */
+#endif
 };
 
 struct stinger_ebpool {
   uint64_t ebpool_tail;
   uint8_t is_shared;
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
   struct stinger_eb ebpool[0];
+#else
+  struct stinger_eb *ebpool;
+#endif
 };
 
 /**
@@ -136,6 +166,7 @@ struct stinger
   /* number of insertions per edge type */
   uint64_t queue_size;
   uint64_t dropped_batches;
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
   uint64_t vertices_start;
   uint64_t physmap_start;
   uint64_t etype_names_start;
@@ -148,6 +179,17 @@ struct stinger
   uint64_t cache_pad[5]; /* Force storage[0] to be cache-block aligned */
 
   uint8_t storage[0];
+#else // !defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
+  stinger_vertices_t* vertices;
+  stinger_physmap_t* physmap;
+  stinger_names_t* etype_names;
+  stinger_names_t* vtype_names;
+  uint8_t *ETA;
+  struct stinger_ebpool * ebpool;
+  // FIXME replace all accesses of this field with calls to new function stinger_get_size
+  size_t length;
+#endif
+
 };
 
 struct stinger_fragmentation_t {
