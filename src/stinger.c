@@ -761,6 +761,18 @@ stinger_ebpool_new(int64_t nebs)
 }
 
 void
+stinger_ebpool_free(struct stinger_ebpool ** ebpool)
+{
+  if (*ebpool){
+#ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
+    free((*ebpool)->ebpool);
+#endif
+    free(*ebpool);
+    *ebpool = NULL;
+ }
+}
+
+void
 stinger_ebpool_init(struct stinger_ebpool * ebpool)
 {
   ebpool->ebpool_tail = 1;
@@ -774,16 +786,36 @@ stinger_ebpool_size(int64_t nebs)
 }
 
 struct stinger_etype_array*
-stinger_etype_array_new(int64_t nebs, int64_t netypes)
+stinger_etype_array_new(int64_t nebs)
 {
   struct stinger_etype_array* eta;
 #ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
   eta = xcalloc(sizeof(struct stinger_etype_array) + nebs * sizeof(eb_index_t), netypes);
 #else
   eta = xcalloc(sizeof(struct stinger_etype_array), 1);
-  eta->blocks = xcalloc(nebs * netypes, sizeof(eb_index_t));
+  eta->blocks = xcalloc(nebs, sizeof(eb_index_t));
 #endif
+  stinger_etype_array_init(eta, nebs);
   return eta;
+}
+
+void
+stinger_etype_array_free(struct stinger_etype_array** eta)
+{
+  if (*eta) {
+#ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
+    free((*eta)->blocks);
+#endif
+    free(*eta);
+    *eta = NULL;
+  }
+}
+
+void
+stinger_etype_array_init(struct stinger_etype_array* eta, int64_t nebs)
+{
+  eta->length = nebs;
+  eta->high = 0;
 }
 
 size_t
@@ -908,38 +940,24 @@ struct stinger *stinger_new_full (struct stinger_config_t * config)
     G->max_netypes  = netypes;
     G->max_nvtypes  = nvtypes;
 
+    // Note that these _new functions also call the corresponding _init function
     G->vertices = stinger_vertices_new(nv);
     G->physmap = stinger_physmap_new(nv);
     G->etype_names = stinger_names_new(netypes);
     G->vtype_names = stinger_names_new(nvtypes);
-    G->ETA = stinger_etype_array_new(nebs, netypes);
+    G->eta_list = xcalloc(sizeof(struct stinger_etype_array), netypes);
+    for (int64_t i = 0; i < netypes; ++i){
+        G->eta_list[i] = stinger_etype_array_new(nebs);
+    }
     G->ebpool = stinger_ebpool_new(nebs);
 
-    //G->length = sizes.size;
-
-    MAP_STING(G);
-
     int64_t zero = 0;
-    stinger_vertices_init(vertices, nv);
-    stinger_physmap_init(physmap, nv);
-    stinger_names_init(etype_names, netypes);
     if (!config->no_map_none_etype) {
-        stinger_names_create_type(etype_names, "None", &zero);
+        stinger_names_create_type(G->etype_names, "None", &zero);
     }
-    stinger_names_init(vtype_names, nvtypes);
     if (!config->no_map_none_vtype) {
-        stinger_names_create_type(vtype_names, "None", &zero);
+        stinger_names_create_type(G->vtype_names, "None", &zero);
     }
-
-    stinger_ebpool_init(ebpool);
-
-    //stinger_etype_array_init(_ETA);
-    OMP ("omp parallel for")
-    for (size_t i = 0; i < netypes; ++i) {
-      ETA(G,i)->length = nebs;
-      ETA(G,i)->high = 0;
-    }
-
 
     return G;
 }
@@ -980,6 +998,17 @@ stinger_free (struct stinger *S)
   size_t i;
   if (!S)
     return S;
+#ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
+  stinger_vertices_free(&S->vertices);
+  stinger_physmap_free(&S->physmap);
+  stinger_names_free(&S->etype_names);
+  stinger_names_free(&S->vtype_names);
+  for (int64_t i = 0; i < S->max_netypes; ++i){
+      stinger_etype_array_free(&S->eta_list[i]);
+  }
+  free(S->eta_list);
+  stinger_ebpool_free(&S->ebpool);
+#endif
 
   free (S);
   return NULL;

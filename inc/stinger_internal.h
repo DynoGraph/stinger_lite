@@ -29,6 +29,8 @@ extern "C" {
   const uint8_t * _ETA = ((X)->storage + (X)->ETA_start); \
   const struct stinger_ebpool * ebpool = (const struct stinger_ebpool *)((X)->storage + (X)->ebpool_start);
 
+#define ETA(X,Y) ((struct stinger_etype_array *)(_ETA + ((Y)*stinger_etype_array_size((X)->max_neblocks))))
+
 #else // !defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
 
 #define MAP_STING(X) \
@@ -36,7 +38,7 @@ extern "C" {
   stinger_physmap_t * physmap = (X)->physmap; \
   stinger_names_t * etype_names = (X)->etype_names; \
   stinger_names_t * vtype_names = (X)->vtype_names; \
-  uint8_t * _ETA = (X)->ETA; \
+  struct stinger_etype_array ** _eta_list = (X)->eta_list; \
   struct stinger_ebpool * ebpool = (X)->ebpool;
 
 #define CONST_MAP_STING(X) \
@@ -44,12 +46,13 @@ extern "C" {
   const stinger_physmap_t * physmap = (X)->physmap; \
   const stinger_names_t * etype_names = (X)->etype_names; \
   const stinger_names_t * vtype_names = (X)->vtype_names; \
-  const uint8_t * _ETA = (X)->ETA; \
+  const struct stinger_etype_array * const * _eta_list = (X)->eta_list; \
   const struct stinger_ebpool * ebpool = (X)->ebpool;
+
+#define ETA(X,Y) (_eta_list[Y])
 
 #endif // STINGER_USE_CONTIGUOUS_ALLOCATION
 
-#define ETA(X,Y) ((struct stinger_etype_array *)(_ETA + ((Y)*stinger_etype_array_size((X)->max_neblocks))))
 
 
 #define STINGER_FORALL_EB_BEGIN(STINGER_,STINGER_SRCVTX_,STINGER_EBNM_)	\
@@ -184,7 +187,7 @@ struct stinger
   stinger_physmap_t* physmap;
   stinger_names_t* etype_names;
   stinger_names_t* vtype_names;
-  uint8_t *ETA;
+  struct stinger_etype_array ** eta_list;
   struct stinger_ebpool * ebpool;
   // FIXME replace all accesses of this field with calls to new function stinger_get_size
   size_t length;
