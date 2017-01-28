@@ -931,7 +931,32 @@ struct stinger *stinger_new_full (struct stinger_config_t * config)
     int64_t netypes = config->netypes ? config->netypes : STINGER_DEFAULT_NUMETYPES;
     int64_t nvtypes = config->nvtypes ? config->nvtypes : STINGER_DEFAULT_NUMVTYPES;
 
-    // FIXME make sure stinger will fit in memory
+    size_t max_memsize_env = stinger_max_memsize();
+
+    const size_t memory_size = (config->memory_size == 0) ? max_memsize_env : config->memory_size;
+
+    int resized   = 0;
+    struct stinger_size_t sizes;
+
+    while (1) {
+        sizes = calculate_stinger_size(nv, nebs, netypes, nvtypes);
+
+        if(sizes.size > (((uint64_t)memory_size * 3) / 4)) {
+            if (config->no_resize) {
+                LOG_E("STINGER does not fit in memory.  no_resize set, so exiting.");
+                exit(-1);
+            }
+            if(!resized) {
+                LOG_W_A("Resizing stinger to fit into memory (detected as %ld)", memory_size);
+            }
+            resized = 1;
+
+            nv    = (3*nv)/4;
+            nebs  = STINGER_DEFAULT_NEB_FACTOR * nv;
+        } else {
+            break;
+        }
+    }
 
     struct stinger *G = xcalloc (sizeof(struct stinger), 1);
 
