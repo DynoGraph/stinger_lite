@@ -790,7 +790,7 @@ stinger_etype_array_new(int64_t nebs)
 {
   struct stinger_etype_array* eta;
 #ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
-  eta = xcalloc(sizeof(struct stinger_etype_array) + nebs * sizeof(eb_index_t), netypes);
+  eta = xcalloc(sizeof(struct stinger_etype_array) + nebs * sizeof(eb_index_t), 1);
 #else
   eta = xcalloc(sizeof(struct stinger_etype_array), 1);
   eta->blocks = xcalloc(nebs, sizeof(eb_index_t));
