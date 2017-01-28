@@ -970,7 +970,7 @@ struct stinger *stinger_new_full (struct stinger_config_t * config)
     G->physmap = stinger_physmap_new(nv);
     G->etype_names = stinger_names_new(netypes);
     G->vtype_names = stinger_names_new(nvtypes);
-    G->eta_list = xcalloc(sizeof(struct stinger_etype_array), netypes);
+    G->eta_list = xcalloc(sizeof(struct stinger_etype_array*), netypes);
     for (int64_t i = 0; i < netypes; ++i){
         G->eta_list[i] = stinger_etype_array_new(nebs);
     }
