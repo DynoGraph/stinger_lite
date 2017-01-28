@@ -1,6 +1,7 @@
 #include "stinger_vertex.h"
 #include "stinger_atomics.h"
 #include "x86_full_empty.h"
+#include "xmalloc.h"
 
 #include <stdlib.h>
 #include <stdio.h>
