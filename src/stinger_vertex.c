@@ -19,7 +19,7 @@ stinger_vertices_new(int64_t max_vertices)
   stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t));
   rtn->vertices = xcalloc(max_vertices, sizeof(stinger_vertex_t));
 #endif
-  rtn->max_vertices = max_vertices;
+  stinger_vertices_init(rtn, max_vertices);
   return rtn;
 }
 
