@@ -189,8 +189,6 @@ struct stinger
   stinger_names_t* vtype_names;
   struct stinger_etype_array ** eta_list;
   struct stinger_ebpool * ebpool;
-  // FIXME replace all accesses of this field with calls to new function stinger_get_size
-  size_t length;
 #endif
 
 };
