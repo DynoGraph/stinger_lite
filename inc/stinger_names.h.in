@@ -37,7 +37,11 @@ extern "C" {
 	  int64_t to_name_start;
 	  int64_t from_name_start;
 	  int64_t to_int_start;
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
 	  uint8_t storage[0];
+#else
+      uint8_t *storage;
+#endif
 	} stinger_names_t;
 
 #endif
