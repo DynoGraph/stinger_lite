@@ -360,8 +360,34 @@ int64_t stinger_max_total_edges (const struct stinger * S);
 
 size_t stinger_graph_size (const struct stinger *);
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
+ * EDGE BLOCK POOL
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+struct stinger_ebpool *
+stinger_ebpool_new(int64_t nebs);
+
+void
+stinger_ebpool_free(struct stinger_ebpool ** ebpool);
+
+void
+stinger_ebpool_init(struct stinger_ebpool * ebpool);
+
 size_t
 stinger_ebpool_size(int64_t nebs);
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
+ * EDGE TYPE ARRAY
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+struct stinger_etype_array*
+stinger_etype_array_new(int64_t nebs);
+
+void
+stinger_etype_array_free(struct stinger_etype_array** eta);
+
+void
+stinger_etype_array_init(struct stinger_etype_array* eta, int64_t nebs);
 
 size_t
 stinger_etype_array_size(int64_t nebs);

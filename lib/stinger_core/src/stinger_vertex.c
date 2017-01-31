@@ -1,6 +1,7 @@
 #include "stinger_vertex.h"
 #include "stinger_atomics.h"
 #include "x86_full_empty.h"
+#include "xmalloc.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -12,8 +13,13 @@
 inline stinger_vertices_t *
 stinger_vertices_new(int64_t max_vertices)
 {
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
   stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t) + max_vertices * sizeof(stinger_vertex_t));
-  rtn->max_vertices = max_vertices;
+#else
+  stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t));
+  rtn->vertices = xcalloc(max_vertices, sizeof(stinger_vertex_t));
+#endif
+  stinger_vertices_init(rtn, max_vertices);
   return rtn;
 }
 
@@ -34,8 +40,12 @@ stinger_vertices_size(int64_t max_vertices)
 inline void
 stinger_vertices_free(stinger_vertices_t ** vertices)
 {
-  if(*vertices)
+  if(*vertices){
+#ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
+    free ((*vertices)->vertices);
+#endif
     free(*vertices);
+  }
   *vertices = NULL;
 }
 
