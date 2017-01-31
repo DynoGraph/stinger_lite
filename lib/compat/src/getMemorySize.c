@@ -5,7 +5,10 @@
  *          http://creativecommons.org/licenses/by/3.0/deed.en_US
  */
 
-#if defined(_WIN32)
+#if defined(__le64__)
+#include <memoryweb.h>
+
+#elif defined(_WIN32)
 #include <Windows.h>
 
 #elif defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
@@ -27,7 +30,10 @@
  */
 size_t getMemorySize( )
 {
-#if defined(_WIN32) && (defined(__CYGWIN__) || defined(__CYGWIN32__))
+#if defined(__le64__)
+	return NODELETS() * BYTES_PER_NODELET();
+
+#elif defined(_WIN32) && (defined(__CYGWIN__) || defined(__CYGWIN32__))
 	/* Cygwin under Windows. ------------------------------------ */
 	/* New 64-bit MEMORYSTATUSEX isn't available.  Use old 32.bit */
 	MEMORYSTATUS status;
