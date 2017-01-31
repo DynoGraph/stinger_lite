@@ -51,8 +51,6 @@ publish_headers(headers "${CMAKE_BINARY_DIR}/include/stinger_alg")
 
 include_directories("${CMAKE_BINARY_DIR}/include/stinger_alg")
 include_directories("${CMAKE_BINARY_DIR}/include/stinger_core")
-# include_directories("${CMAKE_BINARY_DIR}/include/stinger_net")
-# include_directories("${CMAKE_BINARY_DIR}/include/stinger_utils")
 
 add_library(stinger_alg ${sources} ${headers} ${config})
-target_link_libraries(stinger_alg stinger_core ) # compat stinger_net stinger_utils
+target_link_libraries(stinger_alg stinger_core compat)

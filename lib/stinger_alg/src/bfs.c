@@ -7,8 +7,7 @@ parallel_breadth_first_search (struct stinger * S, int64_t nv,
                             int64_t source, int64_t * marks,
                     int64_t * queue, int64_t * Qhead, int64_t * level)
 {
-    OMP("omp parallel for")
-    for (int64_t i = 0; i < nv; i++) {
+    stinger_parallel_for (int64_t i = 0; i < nv; i++) {
         level[i] = -1;
         marks[i] = 0;
     }

@@ -80,7 +80,11 @@ struct stinger_vertex
 struct stinger_vertices
 {
   int64_t	    max_vertices;
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
   stinger_vertex_t  vertices[0];
+#else
+  stinger_vertex_t *vertices;
+#endif
 };
 
 

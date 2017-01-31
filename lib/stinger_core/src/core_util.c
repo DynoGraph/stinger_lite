@@ -7,7 +7,7 @@
 #include "core_util.h"
 #include "stinger_defs.h"
 
-#include "getMemorySize.h"
+#include "compat/getMemorySize.h"
 
 /**
  * @brief Simple comparator for pairs of int64_t.

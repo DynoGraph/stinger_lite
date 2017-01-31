@@ -10,8 +10,6 @@ set(sources
 	src/stinger_vertex.c
 	src/xmalloc.c
 	src/x86_full_empty.c
-	# HACK copied in from lib compat
-	src/getMemorySize.c
 )
 set(headers
 	inc/core_util.h
@@ -29,8 +27,6 @@ set(headers
 	inc/xmalloc.h
 	# Only file that requires C++
 	#inc/stinger_batch_insert.h
-	# HACK copied in from lib compat
-	inc/getMemorySize.h
 )
 
 set(config
@@ -44,3 +40,4 @@ include_directories("${CMAKE_BINARY_DIR}/include/stinger_core")
 
 set_source_files_properties(${config} PROPERTIES GENERATED TRUE)
 add_library(stinger_core ${sources} ${headers} ${config})
+target_link_libraries(stinger_core compat)

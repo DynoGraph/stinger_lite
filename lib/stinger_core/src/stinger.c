@@ -92,7 +92,7 @@ stinger_indegree_increment_atomic(const stinger_t * S, vindex_t v, vdegree_t d) 
 
 inline vdegree_t
 stinger_outdegree_get(const stinger_t * S, vindex_t v) {
-     return ((const stinger_vertices_t*)(S->storage))->vertices[v].outDegree;
+  return stinger_vertex_outdegree_get(stinger_vertices_get(S), v);
 }
 
 inline vdegree_t
@@ -334,7 +334,7 @@ const struct stinger_eb *
 stinger_next_eb (const struct stinger *G,
                  const struct stinger_eb *eb_)
 {
-  const struct stinger_ebpool * ebpool = (const struct stinger_ebpool *)(G->storage + G->ebpool_start);
+  CONST_MAP_STING(G);
   return ebpool->ebpool + readff((uint64_t *)&eb_->next);
 }
 
@@ -745,10 +745,76 @@ stinger_fragmentation (struct stinger *S, uint64_t NV, struct stinger_fragmentat
 
 /* {{{ Allocating and tearing down */
 
+struct stinger_ebpool *
+stinger_ebpool_new(int64_t nebs)
+{
+  struct stinger_ebpool * ebpool;
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
+  ebpool = xcalloc(sizeof(struct stinger_ebpool) + nebs * sizeof(struct stinger_eb), 1);
+#else
+  ebpool = xcalloc(sizeof(struct stinger_ebpool), 1);
+  ebpool->ebpool = xcalloc(nebs, sizeof(struct stinger_eb));
+#endif
+  stinger_ebpool_init(ebpool);
+  return ebpool;
+}
+
+void
+stinger_ebpool_free(struct stinger_ebpool ** ebpool)
+{
+  if (*ebpool){
+#ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
+    free((*ebpool)->ebpool);
+#endif
+    free(*ebpool);
+    *ebpool = NULL;
+ }
+}
+
+void
+stinger_ebpool_init(struct stinger_ebpool * ebpool)
+{
+  ebpool->ebpool_tail = 1;
+  ebpool->is_shared = 0;
+}
+
 size_t
 stinger_ebpool_size(int64_t nebs)
 {
   return (sizeof(struct stinger_ebpool) + nebs * sizeof(struct stinger_eb));
+}
+
+struct stinger_etype_array*
+stinger_etype_array_new(int64_t nebs)
+{
+  struct stinger_etype_array* eta;
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
+  eta = xcalloc(sizeof(struct stinger_etype_array) + nebs * sizeof(eb_index_t), 1);
+#else
+  eta = xcalloc(sizeof(struct stinger_etype_array), 1);
+  eta->blocks = xcalloc(nebs, sizeof(eb_index_t));
+#endif
+  stinger_etype_array_init(eta, nebs);
+  return eta;
+}
+
+void
+stinger_etype_array_free(struct stinger_etype_array** eta)
+{
+  if (*eta) {
+#ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
+    free((*eta)->blocks);
+#endif
+    free(*eta);
+    *eta = NULL;
+  }
+}
+
+void
+stinger_etype_array_init(struct stinger_etype_array* eta, int64_t nebs)
+{
+  eta->length = nebs;
+  eta->high = 0;
 }
 
 size_t
@@ -757,6 +823,7 @@ stinger_etype_array_size(int64_t nebs)
   return (sizeof(struct stinger_etype_array) + nebs * sizeof(eb_index_t));
 }
 
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
 /** @brief Create a new STINGER data structure.
  *
  *  Allocates memory for a STINGER data structure.  If this is the first STINGER
@@ -843,6 +910,81 @@ struct stinger *stinger_new_full (struct stinger_config_t * config)
   return G;
 }
 
+#else // !defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
+
+/** @brief Create a new STINGER data structure.
+ *
+ *  Allocates memory for a STINGER data structure.
+ *
+ *  Unlike stinger_new_full, each sub-structure is allocated separately
+ *
+ *  @return Pointer to struct stinger
+ */
+
+struct stinger *stinger_new_full (struct stinger_config_t * config)
+{
+    int64_t nv      = config->nv      ? config->nv      : STINGER_DEFAULT_VERTICES;
+    int64_t nebs    = config->nebs    ? config->nebs    : STINGER_DEFAULT_NEB_FACTOR * nv;
+    int64_t netypes = config->netypes ? config->netypes : STINGER_DEFAULT_NUMETYPES;
+    int64_t nvtypes = config->nvtypes ? config->nvtypes : STINGER_DEFAULT_NUMVTYPES;
+
+    size_t max_memsize_env = stinger_max_memsize();
+
+    const size_t memory_size = (config->memory_size == 0) ? max_memsize_env : config->memory_size;
+
+    int resized   = 0;
+    struct stinger_size_t sizes;
+
+    while (1) {
+        sizes = calculate_stinger_size(nv, nebs, netypes, nvtypes);
+
+        if(sizes.size > (((uint64_t)memory_size * 3) / 4)) {
+            if (config->no_resize) {
+                LOG_E("STINGER does not fit in memory.  no_resize set, so exiting.");
+                exit(-1);
+            }
+            if(!resized) {
+                LOG_W_A("Resizing stinger to fit into memory (detected as %ld)", memory_size);
+            }
+            resized = 1;
+
+            nv    = (3*nv)/4;
+            nebs  = STINGER_DEFAULT_NEB_FACTOR * nv;
+        } else {
+            break;
+        }
+    }
+
+    struct stinger *G = xcalloc (sizeof(struct stinger), 1);
+
+    G->max_nv       = nv;
+    G->max_neblocks = nebs;
+    G->max_netypes  = netypes;
+    G->max_nvtypes  = nvtypes;
+
+    // Note that these _new functions also call the corresponding _init function
+    G->vertices = stinger_vertices_new(nv);
+    G->physmap = stinger_physmap_new(nv);
+    G->etype_names = stinger_names_new(netypes);
+    G->vtype_names = stinger_names_new(nvtypes);
+    G->eta_list = xcalloc(sizeof(struct stinger_etype_array*), netypes);
+    for (int64_t i = 0; i < netypes; ++i){
+        G->eta_list[i] = stinger_etype_array_new(nebs);
+    }
+    G->ebpool = stinger_ebpool_new(nebs);
+
+    int64_t zero = 0;
+    if (!config->no_map_none_etype) {
+        stinger_names_create_type(G->etype_names, "None", &zero);
+    }
+    if (!config->no_map_none_vtype) {
+        stinger_names_create_type(G->vtype_names, "None", &zero);
+    }
+
+    return G;
+}
+
+#endif
 
 /** @brief Create a new STINGER data structure.
  *
@@ -878,6 +1020,17 @@ stinger_free (struct stinger *S)
   size_t i;
   if (!S)
     return S;
+#ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
+  stinger_vertices_free(&S->vertices);
+  stinger_physmap_free(&S->physmap);
+  stinger_names_free(&S->etype_names);
+  stinger_names_free(&S->vtype_names);
+  for (int64_t i = 0; i < S->max_netypes; ++i){
+      stinger_etype_array_free(&S->eta_list[i]);
+  }
+  free(S->eta_list);
+  stinger_ebpool_free(&S->ebpool);
+#endif
 
   free (S);
   return NULL;

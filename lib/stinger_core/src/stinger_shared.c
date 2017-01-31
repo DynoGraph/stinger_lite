@@ -15,6 +15,45 @@
 #include <unistd.h>
 #include <string.h>
 
+#ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
+void *
+shmmap (const char * name, int oflags, mode_t mode, int prot, size_t size, int map)
+{ LOG_F("shared memory unavailable, enable STINGER_USE_CONTIGUOUS_ALLOCATION and rebuild"); assert(0); return NULL; }
+
+int
+shmunmap (const char * name, void * ptr, size_t size)
+{ LOG_F("shared memory unavailable, enable STINGER_USE_CONTIGUOUS_ALLOCATION and rebuild"); assert(0); return 0; }
+
+int
+shmunlink (const char * name)
+{ LOG_F("shared memory unavailable, enable STINGER_USE_CONTIGUOUS_ALLOCATION and rebuild"); assert(0); return 0; }
+
+struct stinger *
+stinger_shared_new (char ** name)
+{ LOG_F("shared memory unavailable, enable STINGER_USE_CONTIGUOUS_ALLOCATION and rebuild"); assert(0); return NULL; }
+
+struct stinger *
+stinger_shared_new_full (char ** out, struct stinger_config_t * config)
+{ LOG_F("shared memory unavailable, enable STINGER_USE_CONTIGUOUS_ALLOCATION and rebuild"); assert(0); return NULL; }
+
+struct stinger *
+stinger_shared_map (const char * name, size_t sz)
+{ LOG_F("shared memory unavailable, enable STINGER_USE_CONTIGUOUS_ALLOCATION and rebuild"); assert(0); return NULL; }
+
+struct stinger *
+stinger_shared_private (const char * name, size_t sz)
+{ LOG_F("shared memory unavailable, enable STINGER_USE_CONTIGUOUS_ALLOCATION and rebuild"); assert(0); return NULL; }
+
+struct stinger *
+stinger_shared_free (struct stinger *S, const char *name, size_t sz)
+{ LOG_F("shared memory unavailable, enable STINGER_USE_CONTIGUOUS_ALLOCATION and rebuild"); assert(0); return NULL; }
+
+struct stinger *
+stinger_shared_unmap (struct stinger *S, const char *name, size_t sz)
+{ LOG_F("shared memory unavailable, enable STINGER_USE_CONTIGUOUS_ALLOCATION and rebuild"); assert(0); return NULL; }
+
+#else // defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
+
 void
 sigbus_handler(int sig, siginfo_t *si, void * vuctx)
 {
@@ -236,6 +275,7 @@ stinger_shared_new_full (char ** out, struct stinger_config_t * config)
   ebpool->ebpool_tail = 1;
   ebpool->is_shared = 0;
 
+
   stinger_parallel_for (i = 0; i < netypes; ++i) {
     ETA(G,i)->length = nebs;
     ETA(G,i)->high = 0;
@@ -305,3 +345,4 @@ stinger_shared_unmap (struct stinger *S, const char *name, size_t sz)
   //free(S);
   return NULL;
 }
+#endif // STINGER_USE_CONTIGUOUS_ALLOCATION
