@@ -18,6 +18,13 @@ set(STINGER_DEFAULT_NEB_FACTOR "4" CACHE STRING "Default number of edge blocks p
 set(STINGER_EDGEBLOCKSIZE "14" CACHE STRING "Number of edges per edge block")
 set(STINGER_NAME_STR_MAX "255" CACHE STRING "Max string length in physmap")
 
+set(STINGER_USE_CONTIGUOUS_ALLOCATION TRUE CACHE BOOL
+  "Use a single memory allocation for the entire stinger data structure. Must be enabled to use shared memory."
+)
+if(STINGER_USE_CONTIGUOUS_ALLOCATION)
+  add_definitions(-DSTINGER_USE_CONTIGUOUS_ALLOCATION)
+endif()
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/lib/stinger_core/inc/stinger_defs.h.in ${CMAKE_BINARY_DIR}/include/stinger_core/stinger_defs.h @ONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/lib/stinger_core/inc/stinger_names.h.in ${CMAKE_BINARY_DIR}/include/stinger_core/stinger_names.h @ONLY)
 
