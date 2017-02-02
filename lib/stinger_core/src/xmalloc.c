@@ -14,6 +14,11 @@
 #define OMP(x)
 #endif
 
+// HACK Fix broken perror on emu
+#if defined(__le64__)
+  #define perror(X) fprintf(stderr, X "\n")
+#endif
+
 /**
 * @brief Self-checking wrapper to malloc()
 *
