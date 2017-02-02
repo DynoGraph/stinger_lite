@@ -2,6 +2,9 @@
 #include "stinger_atomics.h"
 #include "x86_full_empty.h"
 #include "xmalloc.h"
+#if defined(__le64__)
+#include "emu_xmalloc.h"
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -15,6 +18,9 @@ stinger_vertices_new(int64_t max_vertices)
 {
 #ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
   stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t) + max_vertices * sizeof(stinger_vertex_t));
+#elif STINGER_USE_DISTRIBUTED_ALLOCATION
+  stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t));
+  rtn->vertices = xmw_malloc2d(max_vertices, sizeof(stinger_vertex_t));
 #else
   stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t));
   rtn->vertices = xcalloc(max_vertices, sizeof(stinger_vertex_t));

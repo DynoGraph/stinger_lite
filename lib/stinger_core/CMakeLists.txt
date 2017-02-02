@@ -9,6 +9,7 @@ set(sources
 	src/stinger_shared.c
 	src/stinger_vertex.c
 	src/xmalloc.c
+	src/emu_xmalloc.c
 	src/x86_full_empty.c
 )
 set(headers
@@ -25,6 +26,7 @@ set(headers
 	inc/stinger_vertex.h
 	inc/x86_full_empty.h
 	inc/xmalloc.h
+	inc/emu_xmalloc.h
 	# Only file that requires C++
 	#inc/stinger_batch_insert.h
 )
