@@ -11,6 +11,7 @@
 
 #include <dynograph_util.h>
 #include <hooks_c.h>
+#include <memoryweb.h>
 
 // Figure out how many edge blocks we can allocate to fill STINGER_MAX_MEMSIZE
 // Assumes we need just enough room for nv vertices and puts the rest into edge blocks
@@ -20,7 +21,10 @@ generate_stinger_config(int64_t nv) {
 
     // Start with size we will try to fill
     // Scaled by 75% because that's what stinger_new_full does
-    size_t sz = ((uint64_t)stinger_max_memsize() * 3)/4;
+    // HACK scaling by 25% just so we don't bump into any memory limits
+    size_t sz = ((uint64_t)stinger_max_memsize() * 1)/(4*NODELETS());
+    dynograph_message("Actual memory size: %lu x %lu MB", NODELETS(), BYTES_PER_NODELET() >> 20);
+    dynograph_message("Detected memory size as %lu MB", stinger_max_memsize() >> 20, sz);
 
     // Subtract storage for vertices
     sz -= stinger_vertices_size(nv);
@@ -49,6 +53,11 @@ generate_stinger_config(int64_t nv) {
             0, //uint8_t no_map_none_vtype;
             1, //uint8_t no_resize;
     };
+
+    dynograph_message("Configuring stinger storage for %lu vertices and %lu edges",
+        config.nv, config.nebs * STINGER_EDGEBLOCKSIZE);
+    dynograph_message("Stinger will consume %lu MB of RAM",
+        calculate_stinger_size(nv, nebs, netypes, nvtypes).size >> 20);
 
     return config;
 }
@@ -245,7 +254,6 @@ int main(int argc, char *argv[])
     {
         hooks_set_attr_i64("trial", trial);
 
-        dynograph_message("Initializing stinger...");
         int64_t nv = dataset->max_vertex_id + 1;
         struct stinger_config_t config = generate_stinger_config(nv);
         struct stinger *S = stinger_new_full(&config);
