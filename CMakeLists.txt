@@ -18,11 +18,25 @@ set(STINGER_DEFAULT_NEB_FACTOR "4" CACHE STRING "Default number of edge blocks p
 set(STINGER_EDGEBLOCKSIZE "14" CACHE STRING "Number of edges per edge block")
 set(STINGER_NAME_STR_MAX "255" CACHE STRING "Max string length in physmap")
 
-set(STINGER_USE_CONTIGUOUS_ALLOCATION TRUE CACHE BOOL
-  "Use a single memory allocation for the entire stinger data structure. Must be enabled to use shared memory."
+set(STINGER_ALLOCATION_STRATEGY "CONTIGUOUS" CACHE STRING
+  "Controls the way the stinger data structure is allocated. Options are:
+  CONTIGUOUS: Use a single memory allocation for the entire stinger data structure. Must be enabled to use shared memory.
+  DISTRIBUTED: Distribute the stinger data structure across memory in a platform-dependent manner.
+  MULTIPLE: Allocate each sub-structure separately and store pointers to each one."
 )
-if(STINGER_USE_CONTIGUOUS_ALLOCATION)
+if(STINGER_ALLOCATION_STRATEGY STREQUAL "CONTIGUOUS")
   add_definitions(-DSTINGER_USE_CONTIGUOUS_ALLOCATION)
+elseif(STINGER_ALLOCATION_STRATEGY STREQUAL "DISTRIBUTED")
+  if (CMAKE_SYSTEM_NAME STREQUAL "Emu1")
+    add_definitions(-DSTINGER_USE_DISTRIBUTED_ALLOCATION)
+  else ()
+    message(FATAL_ERROR "Distributed allocation strategy has not implemented for the current platform")
+  endif()
+elseif(STINGER_ALLOCATION_STRATEGY STREQUAL "MULTIPLE")
+  add_definitions(-DSTINGER_USE_MULTIPLE_ALLOCATION)
+
+else()
+  message(FATAL_ERROR "'${STINGER_ALLOCATION_STRATEGY}' is not a valid allocation strategy.")
 endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/lib/stinger_core/inc/stinger_defs.h.in ${CMAKE_BINARY_DIR}/include/stinger_core/stinger_defs.h @ONLY)
