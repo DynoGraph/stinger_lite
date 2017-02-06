@@ -13,20 +13,34 @@
 #include <stdio.h>
 #define perror(X) fprintf(stderr, X "\n")
 
-// Provide reference implementation for non-emu platforms
-#else
-void * mw_malloc2d(size_t nelem, size_t sz) FNATTR_MALLOC;
 
-void *
+#else
+// Provide reference implementation for non-emu platforms
+
+void * FNATTR_MALLOC
 mw_malloc2d(size_t nelem, size_t sz)
 {
-  void ** ptrs = xcalloc(nelem, 8);
-  void * data = xcalloc(nelem, sz);
-  for (size_t i = 0; i < nelem; ++i)
-  {
-    ptrs[i] = data + i * sz;
-  }
-  return ptrs;
+    void ** ptrs = xcalloc(nelem, 8);
+    void * data = xcalloc(nelem, sz);
+    for (size_t i = 0; i < nelem; ++i)
+    {
+        ptrs[i] = data + i * sz;
+    }
+    return ptrs;
+}
+
+void *
+mw_arrayindex(void ** array2d, unsigned long i, unsigned long numelements, size_t eltsize)
+{
+    (void)eltsize;
+    if (i >= numelements) { return NULL; }
+    return array2d[i];
+}
+
+void
+mw_free(void * ptr)
+{
+    free(ptr);
 }
 #endif
 
