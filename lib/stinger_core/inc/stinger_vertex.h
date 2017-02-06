@@ -82,8 +82,10 @@ struct stinger_vertices
   int64_t	    max_vertices;
 #ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
   stinger_vertex_t  vertices[0];
-#else
+#elif STINGER_USE_MULTIPLE_ALLOCATION
   stinger_vertex_t *vertices;
+#elif STINGER_USE_DISTRIBUTED_ALLOCATION
+  stinger_vertex_t **vertices;
 #endif
 };
 
