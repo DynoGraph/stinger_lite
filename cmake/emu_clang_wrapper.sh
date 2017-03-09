@@ -13,7 +13,7 @@
 
 # Copied from common makefile in examples
 # TODO determine how many of these flags belong in the makefile instead of the compiler
-LLVM_CILK_HOME="/usr/local/Emu1/toolchain"
+LLVM_CILK_HOME="/home1/tdysart/Emu1-Nightly/llvm-cilk"
 MEMWEB_INSTALL="${LLVM_CILK_HOME}/memoryweb-libraries/memoryweb/install"
 LIBC_INSTALL="${LLVM_CILK_HOME}/memoryweb-libraries/musl/install"
 
