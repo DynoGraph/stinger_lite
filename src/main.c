@@ -11,7 +11,13 @@
 
 #include <dynograph_util.h>
 #include <hooks_c.h>
+
+#if defined(__le64__)
 #include <memoryweb.h>
+#else
+#define NODELETS() 1
+#define BYTES_PER_NODELET() stinger_max_memsize()
+#endif
 
 // Figure out how many edge blocks we can allocate to fill STINGER_MAX_MEMSIZE
 // Assumes we need just enough room for nv vertices and puts the rest into edge blocks
