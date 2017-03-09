@@ -1,0 +1,7 @@
+num-trials 1
+batch-size 5000
+num-epochs 3
+window-size 1.0
+input-path worldcup-10K.graph.bin
+sort-mode unsorted
+alg-names bfs
