@@ -2,6 +2,6 @@ num-trials 1
 batch-size 10
 num-epochs 1
 window-size 1.0
-input-path ring-of-cliques.graph.bin
+input-path lib/dynograph_util/data/ring-of-cliques.graph.bin
 sort-mode unsorted
 alg-names cc

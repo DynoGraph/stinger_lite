@@ -65,3 +65,12 @@ endif()
 
 add_subdirectory(lib)
 add_subdirectory(src)
+
+# Copy parameter files to the build directory
+file(
+    COPY
+    params/test.txt
+    params/medium.txt
+    DESTINATION
+    params/
+)
