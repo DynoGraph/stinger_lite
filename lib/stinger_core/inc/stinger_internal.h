@@ -107,6 +107,7 @@ struct stinger_edge
   int64_t timeFirst;	/**< First time stamp for this edge */
   int64_t timeRecent;	/**< Recent time stamp for this edge */
 };
+typedef struct stinger_edge stinger_edge_t;
 
 /**
 * @brief An edge block in STINGER
@@ -123,7 +124,7 @@ struct stinger_eb
   int64_t cache_pad;	    /**< Does not do anything -- for performance reasons only */
   struct stinger_edge edges[STINGER_EDGEBLOCKSIZE]; /**< Array of edges */
 };
-
+typedef struct stinger_eb stinger_eb_t;
 
 /**
 * @brief The edge type array
