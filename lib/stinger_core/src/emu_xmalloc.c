@@ -2,6 +2,7 @@
 * Provides self-checking wrappers for emu memory functions
 */
 
+#include <stdio.h>
 #include "emu_xmalloc.h"
 
 #if defined(__le64__)
@@ -10,7 +11,6 @@
 #include <memoryweb.h>
 
 // HACK Fix broken perror on emu
-#include <stdio.h>
 #define perror(X) fprintf(stderr, X "\n")
 
 
