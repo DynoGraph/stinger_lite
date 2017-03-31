@@ -143,10 +143,12 @@ struct stinger_etype_array
 struct stinger_ebpool {
   uint64_t ebpool_tail;
   uint8_t is_shared;
-#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
+#if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
   struct stinger_eb ebpool[0];
-#else
+#elif defined(STINGER_USE_MULTIPLE_ALLOCATION)
   struct stinger_eb *ebpool;
+#elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+  struct stinger_eb **ebpool;
 #endif
 };
 
@@ -218,10 +220,9 @@ struct curs
   eb_index_t eb, *loc;
 };
 
-
-static inline const struct stinger_eb *
-stinger_next_eb (const struct stinger *G,
-                 const struct stinger_eb *eb_);
+static inline struct stinger_eb *
+stinger_next_eb (struct stinger *G,
+                 struct stinger_eb *eb_);
 
 int stinger_eb_high (const struct stinger_eb * eb_);
 static inline int64_t stinger_eb_type (const struct stinger_eb * eb_);

@@ -96,9 +96,7 @@ stinger_remove_and_insert_edges (struct stinger *G,
   curs = etype_begin (G, from,type);
   prev_loc = curs.loc;
 
-  struct stinger_eb * ebpool_priv = ebpool->ebpool;
-
-  for (tmp = ebpool_priv + curs.eb; tmp != ebpool_priv; tmp = ebpool_priv + tmp->next) {
+  for (tmp = stinger_ebpool_get_eb(G, curs.eb); tmp != NULL; stinger_next_eb(G, tmp)) {
     if(tmp->etype == type) {
       size_t k, endk;
       size_t found_k = STINGER_EDGEBLOCKSIZE;
@@ -173,14 +171,14 @@ stinger_remove_and_insert_edges (struct stinger *G,
 
     new_ebs (G, ebs, neb, type, from);
     for (int64_t kb = 0; kb < neb - 1; ++kb)
-      ebpool_priv[ebs[kb]].next = kb + 1;
-    ebpool_priv[ebs[neb - 1]].next = 0;
+      stinger_ebpool_get_eb(G, ebs[kb])->next = kb + 1;
+    stinger_ebpool_get_eb(G, ebs[neb - 1])->next = 0;
     *prev_loc = ebs[0];
     push_ebs (G, neb, ebs);
 
     
       for (int64_t kb = 0; kb < neb; ++kb) {
-        struct stinger_eb *eb = ebpool_priv + ebs[kb];
+        struct stinger_eb *eb = stinger_ebpool_get_eb(G, ebs[kb]);
           for (int64_t k = 0;
                nslot < ninsert_remaining
                  && k <

@@ -376,6 +376,9 @@ stinger_ebpool_init(struct stinger_ebpool * ebpool);
 size_t
 stinger_ebpool_size(int64_t nebs);
 
+stinger_eb_t *
+stinger_ebpool_get_eb(struct stinger *G, eb_index_t i);
+
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
  * EDGE TYPE ARRAY
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
