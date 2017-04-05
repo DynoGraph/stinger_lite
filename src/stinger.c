@@ -792,6 +792,7 @@ stinger_eb_t *
 stinger_ebpool_get_eb(struct stinger *G, eb_index_t i)
 {
     MAP_STING(G);
+    if (i == 0) { return NULL; }
 #if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
     assert(i < G->max_neblocks);
     // Using mw_arrayindex avoids migrating to the nodelet containing the ebpool pointer
