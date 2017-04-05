@@ -57,8 +57,7 @@ bs64 (int64_t xin)
 void
 bs64_n (size_t n, int64_t * restrict d)
 {
-  OMP ("omp parallel for")
-    for (size_t k = 0; k < n; ++k)
+    stinger_parallel_for (size_t k = 0; k < n; ++k)
       d[k] = bs64 (d[k]);
 }
 

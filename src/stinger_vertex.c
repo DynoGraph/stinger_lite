@@ -1,6 +1,8 @@
 #include "stinger_vertex.h"
 #include "stinger_atomics.h"
 #include "x86_full_empty.h"
+#include "xmalloc.h"
+#include "emu_xmalloc.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -12,8 +14,16 @@
 inline stinger_vertices_t *
 stinger_vertices_new(int64_t max_vertices)
 {
+#if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
   stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t) + max_vertices * sizeof(stinger_vertex_t));
-  rtn->max_vertices = max_vertices;
+#elif defined(STINGER_USE_MULTIPLE_ALLOCATION)
+    stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t));
+  rtn->vertices = xcalloc(max_vertices, sizeof(stinger_vertex_t));
+#elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+  stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t));
+  rtn->vertices = xmw_malloc2d(max_vertices, sizeof(stinger_vertex_t));
+#endif
+  stinger_vertices_init(rtn, max_vertices);
   return rtn;
 }
 
@@ -34,8 +44,14 @@ stinger_vertices_size(int64_t max_vertices)
 inline void
 stinger_vertices_free(stinger_vertices_t ** vertices)
 {
-  if(*vertices)
+  if(*vertices){
+#if defined(STINGER_USE_MULTIPLE_ALLOCATION)
+    free ((*vertices)->vertices);
+#elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+    mw_free((*vertices)->vertices);
+#endif
     free(*vertices);
+  }
   *vertices = NULL;
 }
 
@@ -45,7 +61,16 @@ stinger_vertices_vertex_get(const stinger_vertices_t * vertices, vindex_t v)
   if (v >= vertices->max_vertices || v < 0) {
     return NULL;
   }
+#if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+  return mw_arrayindex(
+    vertices->vertices,
+    (unsigned long)v,
+    (unsigned long)vertices->max_vertices,
+    sizeof(stinger_vertex_t)
+  );
+#else
   return &(vertices->vertices[v]);
+#endif
 }
 
 inline int64_t

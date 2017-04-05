@@ -14,6 +14,11 @@
 #define OMP(x)
 #endif
 
+// HACK Fix broken perror on emu
+#if defined(__le64__)
+  #define perror(X) fprintf(stderr, X "\n")
+#endif
+
 /**
 * @brief Self-checking wrapper to malloc()
 *
@@ -108,8 +113,7 @@ xmmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset)
 void xelemset(int64_t *s, int64_t c, int64_t num)
 {
   assert(s != NULL);
-  OMP("omp parallel for")
-    for (int64_t v = 0; v < num; ++v) {
+    stinger_parallel_for (int64_t v = 0; v < num; ++v) {
       s[v] = c;
     }
 }
@@ -124,9 +128,8 @@ void xelemset(int64_t *s, int64_t c, int64_t num)
 void xelemcpy(int64_t *dest, int64_t *src, int64_t num)
 {
   assert(dest != NULL && src != NULL);
-#ifdef _OPENMP
-  OMP("omp parallel for")
-    for (int64_t v = 0; v < num; ++v)
+#if defined(_OPENMP) || defined(__cilk)
+    stinger_parallel_for (int64_t v = 0; v < num; ++v)
     {
       dest[v] = src[v];
     }

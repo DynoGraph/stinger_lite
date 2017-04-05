@@ -12,6 +12,7 @@
 #include "stinger_atomics.h"
 #include "core_util.h"
 #include "xmalloc.h"
+#include "emu_xmalloc.h"
 #include "x86_full_empty.h"
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
@@ -92,7 +93,7 @@ stinger_indegree_increment_atomic(const stinger_t * S, vindex_t v, vdegree_t d) 
 
 inline vdegree_t
 stinger_outdegree_get(const stinger_t * S, vindex_t v) {
-     return ((const stinger_vertices_t*)(S->storage))->vertices[v].outDegree;
+  return stinger_vertex_outdegree_get(stinger_vertices_get(S), v);
 }
 
 inline vdegree_t
@@ -248,7 +249,7 @@ get_from_ebpool (const struct stinger * S, eb_index_t *out, size_t k)
   MAP_STING(S);
   eb_index_t ebt0;
   {
-    ebt0 = stinger_int64_fetch_add (&(ebpool->ebpool_tail), k);
+    ebt0 = stinger_uint64_fetch_add (&(ebpool->ebpool_tail), k);
     if (ebt0 + k >= (S->max_neblocks)) {
       LOG_F("STINGER has run out of internal storage space.  Storing this graph will require a larger\n"
 	    "       initial STINGER allocation. Try reducing the number of vertices and/or edges per block in\n"
@@ -256,8 +257,7 @@ get_from_ebpool (const struct stinger * S, eb_index_t *out, size_t k)
 	    "       information on how to do this.\n");
       abort();
     }
-    OMP("omp parallel for")
-      for (size_t ki = 0; ki < k; ++ki)
+      stinger_parallel_for (size_t ki = 0; ki < k; ++ki)
         out[ki] = ebt0 + ki;
   }
 }
@@ -330,13 +330,13 @@ stinger_num_active_vertices(const struct stinger * S) {
   return out;
 }
 
-
-const struct stinger_eb *
-stinger_next_eb (const struct stinger *G,
-                 const struct stinger_eb *eb_)
+struct stinger_eb *
+stinger_next_eb (struct stinger *G,
+                 struct stinger_eb *eb_)
 {
-  const struct stinger_ebpool * ebpool = (const struct stinger_ebpool *)(G->storage + G->ebpool_start);
-  return ebpool->ebpool + readff((uint64_t *)&eb_->next);
+  eb_index_t next = readff(&eb_->next);
+  if (next == 0) { return NULL; }
+  else { return stinger_ebpool_get_eb(G, next); }
 }
 
 int64_t
@@ -569,7 +569,6 @@ stinger_consistency_check (struct stinger *S, uint64_t NV)
   }  
 
   MAP_STING(S);
-  struct stinger_eb * ebpool_priv = ebpool->ebpool;
   // check blocks
   OMP("omp parallel for reduction(|:returnCode)")
   
@@ -577,8 +576,8 @@ stinger_consistency_check (struct stinger *S, uint64_t NV)
     uint64_t curOutDegree = 0;
     uint64_t curInDegree = 0;
     uint64_t curDegree = 0;
-    const struct stinger_eb *curBlock = ebpool_priv + stinger_vertex_edges_get(vertices, i);
-    while (curBlock != ebpool_priv) {
+    const struct stinger_eb *curBlock = stinger_ebpool_get_eb(S, stinger_vertex_edges_get(vertices, i));
+    while (curBlock != NULL) {
       if (curBlock->vertexID != i)
         returnCode |= 0x00000002;
       if (curBlock->high > STINGER_EDGEBLOCKSIZE)
@@ -628,7 +627,7 @@ stinger_consistency_check (struct stinger *S, uint64_t NV)
                && stinger_eb_first_ts (curBlock, j) == 0)))
           returnCode |= 0x00000040;
       }
-      curBlock = ebpool_priv + curBlock->next;
+      curBlock = stinger_next_eb(S, curBlock);
     }
 
     if (curOutDegree != stinger_outdegree_get(S, i)) {
@@ -696,12 +695,11 @@ stinger_fragmentation (struct stinger *S, uint64_t NV, struct stinger_fragmentat
   uint64_t numEmptyBlocks = 0;
 
   MAP_STING(S);
-  struct stinger_eb * ebpool_priv = ebpool->ebpool;
   OMP ("omp parallel for reduction(+:numSpaces, numBlocks, numEdges, numEmptyBlocks)")
   for (uint64_t i = 0; i < NV; i++) {
-    const struct stinger_eb *curBlock = ebpool_priv + stinger_vertex_edges_get(vertices, i);
+    const struct stinger_eb *curBlock = stinger_ebpool_get_eb(S, stinger_vertex_edges_get(vertices, i));
 
-    while (curBlock != ebpool_priv) {
+    while (curBlock != NULL) {
       uint64_t found = 0;
 
       if (curBlock->numEdges == 0) {
@@ -723,7 +721,7 @@ stinger_fragmentation (struct stinger *S, uint64_t NV, struct stinger_fragmentat
       }
 
       numBlocks += found;
-      curBlock = ebpool_priv + curBlock->next;
+      curBlock = stinger_next_eb(S, curBlock);
     }
   }
 
@@ -746,10 +744,96 @@ stinger_fragmentation (struct stinger *S, uint64_t NV, struct stinger_fragmentat
 
 /* {{{ Allocating and tearing down */
 
+struct stinger_ebpool *
+stinger_ebpool_new(int64_t nebs)
+{
+  struct stinger_ebpool * ebpool;
+#if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
+  ebpool = xcalloc(sizeof(struct stinger_ebpool) + nebs * sizeof(struct stinger_eb), 1);
+#elif defined(STINGER_USE_MULTIPLE_ALLOCATION)
+  ebpool = xcalloc(sizeof(struct stinger_ebpool), 1);
+  ebpool->ebpool = xcalloc(nebs, sizeof(struct stinger_eb));
+#elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+  ebpool = xcalloc(sizeof(struct stinger_ebpool), 1);
+  ebpool->ebpool = xmw_malloc2d(nebs, sizeof(struct stinger_eb));
+#endif
+  stinger_ebpool_init(ebpool);
+  return ebpool;
+}
+
+void
+stinger_ebpool_free(struct stinger_ebpool ** ebpool)
+{
+  if (*ebpool){
+#if defined(STINGER_USE_MULTIPLE_ALLOCATION)
+    free((*ebpool)->ebpool);
+#elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+    mw_free((*ebpool)->ebpool);
+#endif
+    free(*ebpool);
+    *ebpool = NULL;
+ }
+}
+
+void
+stinger_ebpool_init(struct stinger_ebpool * ebpool)
+{
+  ebpool->ebpool_tail = 1;
+  ebpool->is_shared = 0;
+}
+
 size_t
 stinger_ebpool_size(int64_t nebs)
 {
   return (sizeof(struct stinger_ebpool) + nebs * sizeof(struct stinger_eb));
+}
+
+stinger_eb_t *
+stinger_ebpool_get_eb(struct stinger *G, eb_index_t i)
+{
+    MAP_STING(G);
+#if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+    assert(i < G->max_neblocks);
+    // Using mw_arrayindex avoids migrating to the nodelet containing the ebpool pointer
+    // Otherwise equivalent to:
+    // return ebpool->ebpool[i];
+    return mw_arrayindex((void**)ebpool->ebpool, i, G->max_neblocks, sizeof(stinger_eb_t));
+#else
+    return ebpool->ebpool + i;
+#endif
+}
+
+struct stinger_etype_array*
+stinger_etype_array_new(int64_t nebs)
+{
+  struct stinger_etype_array* eta;
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
+  eta = xcalloc(sizeof(struct stinger_etype_array) + nebs * sizeof(eb_index_t), 1);
+#else
+  eta = xcalloc(sizeof(struct stinger_etype_array), 1);
+  eta->blocks = xcalloc(nebs, sizeof(eb_index_t));
+#endif
+  stinger_etype_array_init(eta, nebs);
+  return eta;
+}
+
+void
+stinger_etype_array_free(struct stinger_etype_array** eta)
+{
+  if (*eta) {
+#ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
+    free((*eta)->blocks);
+#endif
+    free(*eta);
+    *eta = NULL;
+  }
+}
+
+void
+stinger_etype_array_init(struct stinger_etype_array* eta, int64_t nebs)
+{
+  eta->length = nebs;
+  eta->high = 0;
 }
 
 size_t
@@ -758,6 +842,7 @@ stinger_etype_array_size(int64_t nebs)
   return (sizeof(struct stinger_etype_array) + nebs * sizeof(eb_index_t));
 }
 
+#ifdef STINGER_USE_CONTIGUOUS_ALLOCATION
 /** @brief Create a new STINGER data structure.
  *
  *  Allocates memory for a STINGER data structure.  If this is the first STINGER
@@ -836,8 +921,7 @@ struct stinger *stinger_new_full (struct stinger_config_t * config)
   ebpool->ebpool_tail = 1;
   ebpool->is_shared = 0;
 
-  OMP ("omp parallel for") 
-  for (i = 0; i < netypes; ++i) {
+  stinger_parallel_for(i = 0; i < netypes; ++i) {
     ETA(G,i)->length = nebs;
     ETA(G,i)->high = 0;
   }
@@ -845,6 +929,81 @@ struct stinger *stinger_new_full (struct stinger_config_t * config)
   return G;
 }
 
+#else // !defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
+
+/** @brief Create a new STINGER data structure.
+ *
+ *  Allocates memory for a STINGER data structure.
+ *
+ *  Unlike stinger_new_full, each sub-structure is allocated separately
+ *
+ *  @return Pointer to struct stinger
+ */
+
+struct stinger *stinger_new_full (struct stinger_config_t * config)
+{
+    int64_t nv      = config->nv      ? config->nv      : STINGER_DEFAULT_VERTICES;
+    int64_t nebs    = config->nebs    ? config->nebs    : STINGER_DEFAULT_NEB_FACTOR * nv;
+    int64_t netypes = config->netypes ? config->netypes : STINGER_DEFAULT_NUMETYPES;
+    int64_t nvtypes = config->nvtypes ? config->nvtypes : STINGER_DEFAULT_NUMVTYPES;
+
+    size_t max_memsize_env = stinger_max_memsize();
+
+    const size_t memory_size = (config->memory_size == 0) ? max_memsize_env : config->memory_size;
+
+    int resized   = 0;
+    struct stinger_size_t sizes;
+
+    while (1) {
+        sizes = calculate_stinger_size(nv, nebs, netypes, nvtypes);
+
+        if(sizes.size > (((uint64_t)memory_size * 3) / 4)) {
+            if (config->no_resize) {
+                LOG_E("STINGER does not fit in memory.  no_resize set, so exiting.");
+                exit(-1);
+            }
+            if(!resized) {
+                LOG_W_A("Resizing stinger to fit into memory (detected as %ld)", memory_size);
+            }
+            resized = 1;
+
+            nv    = (3*nv)/4;
+            nebs  = STINGER_DEFAULT_NEB_FACTOR * nv;
+        } else {
+            break;
+        }
+    }
+
+    struct stinger *G = xcalloc (sizeof(struct stinger), 1);
+
+    G->max_nv       = nv;
+    G->max_neblocks = nebs;
+    G->max_netypes  = netypes;
+    G->max_nvtypes  = nvtypes;
+
+    // Note that these _new functions also call the corresponding _init function
+    G->vertices = stinger_vertices_new(nv);
+    G->physmap = stinger_physmap_new(nv);
+    G->etype_names = stinger_names_new(netypes);
+    G->vtype_names = stinger_names_new(nvtypes);
+    G->eta_list = xcalloc(sizeof(struct stinger_etype_array*), netypes);
+    for (int64_t i = 0; i < netypes; ++i){
+        G->eta_list[i] = stinger_etype_array_new(nebs);
+    }
+    G->ebpool = stinger_ebpool_new(nebs);
+
+    int64_t zero = 0;
+    if (!config->no_map_none_etype) {
+        stinger_names_create_type(G->etype_names, "None", &zero);
+    }
+    if (!config->no_map_none_vtype) {
+        stinger_names_create_type(G->vtype_names, "None", &zero);
+    }
+
+    return G;
+}
+
+#endif
 
 /** @brief Create a new STINGER data structure.
  *
@@ -880,6 +1039,17 @@ stinger_free (struct stinger *S)
   size_t i;
   if (!S)
     return S;
+#ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
+  stinger_vertices_free(&S->vertices);
+  stinger_physmap_free(&S->physmap);
+  stinger_names_free(&S->etype_names);
+  stinger_names_free(&S->vtype_names);
+  for (int64_t i = 0; i < S->max_netypes; ++i){
+      stinger_etype_array_free(&S->eta_list[i]);
+  }
+  free(S->eta_list);
+  stinger_ebpool_free(&S->ebpool);
+#endif
 
   free (S);
   return NULL;
@@ -910,8 +1080,8 @@ eb_index_t new_eb (struct stinger * S, int64_t etype, int64_t from)
   size_t k;
   eb_index_t out = 0;
   get_from_ebpool (S, &out, 1);
-  struct stinger_eb * block = ebpool->ebpool + out;
-  assert (block != ebpool->ebpool);
+  struct stinger_eb * block = stinger_ebpool_get_eb(S, out);
+  assert (block != NULL);
   xzero (block, sizeof (*block));
   block->etype = etype;
   block->vertexID = from;
@@ -931,9 +1101,8 @@ new_ebs (struct stinger * S, eb_index_t *out, size_t neb, int64_t etype,
 
   MAP_STING(S);
 
-  OMP ("omp parallel for")
-    for (size_t i = 0; i < neb; ++i) {
-      struct stinger_eb * block = ebpool->ebpool + out[i];
+    stinger_parallel_for (size_t i = 0; i < neb; ++i) {
+      struct stinger_eb * block = stinger_ebpool_get_eb(S, out[i]);
       xzero (block, sizeof (*block));
       block->etype = etype;
       block->vertexID = from;
@@ -956,26 +1125,26 @@ new_blk_ebs (eb_index_t *out, const struct stinger *restrict G,
 
   MAP_STING(G);
 
-  OMP ("omp parallel for")
-    for (size_t k = 0; k < neb; ++k) {
-      struct stinger_eb * block = ebpool->ebpool + out[k];
+    stinger_parallel_for (size_t k = 0; k < neb; ++k) {
+      struct stinger_eb * block = stinger_ebpool_get_eb(G, out[k]);
       xzero (block, sizeof (*block));
       block->etype = etype;
       block->smallStamp = INT64_MAX;
       block->largeStamp = INT64_MIN;
     }
 
-  OMP ("omp parallel for")
-    for (int64_t v = 0; v < nvtx; ++v) {
+    stinger_parallel_for (int64_t v = 0; v < nvtx; ++v) {
       const int64_t from = v;
       const size_t blkend = blkoff[v + 1];
       
-        for (size_t k = blkoff[v]; k < blkend; ++k)
-          ebpool->ebpool[out[k]].vertexID = from;
-      if (blkend)
-        
-          for (size_t k = blkoff[v]; k < blkend - 1; ++k)
-            ebpool->ebpool[out[k]].next = out[k + 1];
+      for (size_t k = blkoff[v]; k < blkend; ++k) {
+        stinger_ebpool_get_eb(G, out[k])->vertexID = from;
+      }
+      if (blkend) {
+        for (size_t k = blkoff[v]; k < blkend - 1; ++k) {
+          stinger_ebpool_get_eb(G, out[k])->next = out[k + 1];
+        }
+      }
     }
 }
 
@@ -994,7 +1163,7 @@ push_ebs (struct stinger *G, size_t neb,
     return;
 
   MAP_STING(G);
-  etype = ebpool->ebpool[eb[0]].etype;
+  etype = stinger_ebpool_get_eb(G, eb[0])->etype;
   assert (etype >= 0);
   assert (etype < G->max_netypes);
 
@@ -1017,9 +1186,9 @@ etype_begin (stinger_t * S, int64_t v, int etype)
   assert (vertices);
   out.eb = stinger_vertex_edges_get(vertices,v);
   out.loc = stinger_vertex_edges_pointer_get(vertices,v);
-  while (out.eb && ebpool->ebpool[out.eb].etype != etype) {
-    out.loc = &(ebpool->ebpool[out.eb].next);
-    out.eb = readff((uint64_t *)&(ebpool->ebpool[out.eb].next));
+  while (out.eb && stinger_ebpool_get_eb(S, out.eb)->etype != etype) {
+    out.loc = &(stinger_ebpool_get_eb(S, out.eb)->next);
+    out.eb = readff(out.loc);
   }
   return out;
 }
@@ -1124,7 +1293,6 @@ stinger_update_directed_edge(struct stinger *G,
 
   struct curs curs;
   struct stinger_eb *tmp;
-  struct stinger_eb *ebpool_priv = ebpool->ebpool;
 
   int64_t dest;
   int64_t src;
@@ -1148,7 +1316,7 @@ stinger_update_directed_edge(struct stinger *G,
   */
 
   /* 1: Check if the edge already exists. */
-  for (tmp = ebpool_priv + curs.eb; tmp != ebpool_priv; tmp = ebpool_priv + readff((uint64_t *)&tmp->next)) {
+  for (tmp = stinger_ebpool_get_eb(G, curs.eb); tmp != NULL; tmp = stinger_next_eb(G, tmp)) {
     if(type == tmp->etype) {
       size_t k, endk;
       endk = tmp->high;
@@ -1171,7 +1339,7 @@ stinger_update_directed_edge(struct stinger *G,
   while (1) {
     curs.eb = readff((uint64_t *)curs.loc);
     /* 2: The edge isn't already there.  Check for an empty slot. */
-    for (tmp = ebpool_priv + curs.eb; tmp != ebpool_priv; tmp = ebpool_priv + readff((uint64_t *)&tmp->next)) {
+    for (tmp = stinger_ebpool_get_eb(G, curs.eb); tmp != NULL; tmp = stinger_next_eb(G, tmp)) {
       if(type == tmp->etype) {
         size_t k, endk;
         endk = tmp->high;
@@ -1224,8 +1392,8 @@ stinger_update_directed_edge(struct stinger *G,
         writeef (curs.loc, (uint64_t)old_eb);
         return -1;
       } else {
-        update_edge_data_and_direction (G, ebpool_priv + newBlock, 0, dest, weight, timestamp, direction, EDGE_WEIGHT_SET);
-        ebpool_priv[newBlock].next = 0;
+        update_edge_data_and_direction (G, stinger_ebpool_get_eb(G, newBlock), 0, dest, weight, timestamp, direction, EDGE_WEIGHT_SET);
+        stinger_ebpool_get_eb(G, newBlock)->next = 0;
         push_ebs (G, 1, &newBlock);
       }
       writeef (curs.loc, (uint64_t)newBlock);
@@ -1434,7 +1602,6 @@ stinger_remove_edge (struct stinger *G,
   struct stinger_eb *tmp_first, *tmp_second;
   size_t k_first, k_second;
   int64_t weight_first, weight_second;
-  struct stinger_eb *ebpool_priv = ebpool->ebpool;
 
   int64_t lock_backedge_first = 0;
 
@@ -1447,7 +1614,7 @@ stinger_remove_edge (struct stinger *G,
 
   curs = etype_begin (G, from, type);
 
-  for (tmp_first = ebpool_priv + curs.eb; tmp_first != ebpool_priv; tmp_first = ebpool_priv + readff((uint64_t *)&tmp_first->next)) {
+  for (tmp_first = stinger_ebpool_get_eb(G, curs.eb); tmp_first != NULL; tmp_first = stinger_next_eb(G, tmp_first)) {
     if(type == tmp_first->etype) {
       size_t endk;
       endk = tmp_first->high;
@@ -1480,11 +1647,8 @@ stinger_remove_edge (struct stinger *G,
 
   removeBackEdge:
 
-  ebpool_priv = ebpool->ebpool;
-
   curs = etype_begin (G, to, type);
-
-  for (tmp_second = ebpool_priv + curs.eb; tmp_second != ebpool_priv; tmp_second = ebpool_priv + readff((uint64_t *)&tmp_second->next)) {
+  for (tmp_second = stinger_ebpool_get_eb(G, curs.eb); tmp_second != NULL; tmp_second = stinger_next_eb(G, tmp_second)) {
     if(type == tmp_second->etype) {
       size_t endk;
       endk = tmp_second->high;
@@ -1609,8 +1773,7 @@ stinger_set_initial_edges (struct stinger *G,
   MAP_STING(G);
 
   blkoff = xcalloc (nv + 1, sizeof (*blkoff));
-  OMP ("omp parallel for")
-  for (int64_t v = 0; v < nv; ++v) {
+  stinger_parallel_for (int64_t v = 0; v < nv; ++v) {
     const int64_t deg = off[v + 1] - off[v];
     blkoff[v + 1] = (deg + STINGER_EDGEBLOCKSIZE - 1) / STINGER_EDGEBLOCKSIZE;
   }
@@ -1624,8 +1787,7 @@ stinger_set_initial_edges (struct stinger *G,
 
   new_blk_ebs (&block[0], G, nv, blkoff, etype);
   
-  OMP ("omp parallel for")
-  for (int64_t v = 0; v < nv; ++v) {
+  stinger_parallel_for (int64_t v = 0; v < nv; ++v) {
     const size_t nextoff = off[v + 1];
     size_t kgraph = off[v];
      int64_t from;
@@ -1649,7 +1811,7 @@ stinger_set_initial_edges (struct stinger *G,
       if (voff + n_to_copy >= nextoff)
         n_to_copy = nextoff - voff;
 
-      eb = ebpool->ebpool + block[kblk];
+      eb = stinger_ebpool_get_eb(G, block[kblk]);
       edge = &eb->edges[0];
 
       for (size_t i = 0; i < n_to_copy; ++i) {
@@ -1700,7 +1862,7 @@ stinger_set_initial_edges (struct stinger *G,
        v.  Insert into the graph.  */
 
     if (blkoff[v] != blkoff[v + 1]) {
-      ebpool->ebpool[block[blkoff[v+1]-1]].next = stinger_vertex_edges_get(vertices, from);
+      stinger_ebpool_get_eb(G, block[blkoff[v+1]-1])->next = stinger_vertex_edges_get(vertices, from);
       stinger_vertex_edges_set(vertices, from, block[blkoff[v]]);
     }
   }
@@ -2407,7 +2569,7 @@ stinger_remove_all_edges_of_type (struct stinger *G, int64_t type)
   
   OMP("omp parallel for reduction(+: ne_removed)")
   for (uint64_t p = 0; p < ETA(G, type)->high; p++) {
-    struct stinger_eb *current_eb = ebpool->ebpool + ETA(G,type)->blocks[p];
+    struct stinger_eb *current_eb = stinger_ebpool_get_eb(G, ETA(G,type)->blocks[p]);
     int64_t thisVertex = current_eb->vertexID;
     int64_t high = current_eb->high;
     struct stinger_edge * edges = current_eb->edges;
@@ -2498,11 +2660,8 @@ stinger_save_to_file (struct stinger * S, uint64_t maxVtx, const char * stingerf
   uint64_t * restrict offsets = xcalloc((maxVtx+2) * (S->max_netypes), sizeof(uint64_t));
 
   for(int64_t type = 0; type < (S->max_netypes); type++) {
-    struct stinger_eb * local_ebpool = ebpool->ebpool;
-    OMP("omp parallel for")
-    
-    for(uint64_t block = 0; block < ETA(S,type)->high; block++) {
-      struct stinger_eb * cureb = local_ebpool + ETA(S, type)->blocks[block];
+    stinger_parallel_for(uint64_t block = 0; block < ETA(S,type)->high; block++) {
+      struct stinger_eb * cureb = stinger_ebpool_get_eb(S, ETA(S, type)->blocks[block]);
       int64_t num = cureb->numEdges;
       if (num) {
         stinger_int64_fetch_add(&tdeg(type,cureb->vertexID), num);
@@ -2531,11 +2690,8 @@ stinger_save_to_file (struct stinger * S, uint64_t maxVtx, const char * stingerf
 #define tdeg(X,Y) offsets[((X) * (maxVtx+2)) + (Y+1)]
 
   for(int64_t type = 0; type < (S->max_netypes); type++) {
-    struct stinger_eb * local_ebpool = ebpool->ebpool;
-    OMP("omp parallel for")
-    
-    for(uint64_t block = 0; block < ETA(S,type)->high; block++) {
-      struct stinger_eb * cureb = local_ebpool + ETA(S,type)->blocks[block];
+    stinger_parallel_for(uint64_t block = 0; block < ETA(S,type)->high; block++) {
+      struct stinger_eb * cureb = stinger_ebpool_get_eb(S, ETA(S,type)->blocks[block]);
       int64_t num = cureb->numEdges;
       if (num) {
         int64_t my_off = stinger_int64_fetch_add(&tdeg(type,cureb->vertexID),num) + type_offsets[type];

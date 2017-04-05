@@ -6,7 +6,15 @@ extern "C" {
 #define PROCESS_NAME ("stinger")
 
 #include <stdio.h>
+
+#define SYSLOG_IS_BROKEN
+#ifndef SYSLOG_IS_BROKEN
 #include <syslog.h>
+#else
+#define openlog(ident, option, facility)
+#define syslog(priority, format, ...) fprintf(stderr, format, ##__VA_ARGS__);
+#define closelog()
+#endif
 
 /**
 * @file stinger_error.h

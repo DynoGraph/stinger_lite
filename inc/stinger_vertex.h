@@ -80,7 +80,13 @@ struct stinger_vertex
 struct stinger_vertices
 {
   int64_t	    max_vertices;
+#if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
   stinger_vertex_t  vertices[0];
+#elif defined(STINGER_USE_MULTIPLE_ALLOCATION)
+  stinger_vertex_t *vertices;
+#elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+  stinger_vertex_t **vertices;
+#endif
 };
 
 
