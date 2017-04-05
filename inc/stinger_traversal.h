@@ -291,7 +291,7 @@ extern "C" {
     const struct stinger * restrict S__ = (STINGER_);                                   \
     const struct stinger_eb * restrict eb__;                                            \
     const int64_t source__ = (VTX_);                                                    \
-    int64_t ebp_k__ = vertices->vertices[source__].edges;                               \
+    int64_t ebp_k__ = stinger_vertex_edges_get(vertices, source__);                     \
     while(ebp_k__) {                                                                    \
       eb__ = stinger_ebpool_get_eb(STINGER_, ebp_k__);                                  \
       EB_FILTER_ {                                                                      \
@@ -359,11 +359,11 @@ extern "C" {
     const int64_t source__ = (VTX_);                                                        \
     OMP("omp parallel") {                                                                   \
       OMP("omp single") {                                                                   \
-        int64_t ebp_k__ = vertices->vertices[source__].edges;                               \
+        int64_t ebp_k__ = stinger_vertex_edges_get(vertices, source__);                     \
         while(ebp_k__) {                                                                    \
           eb__ = stinger_ebpool_get_eb(STINGER_, ebp_k__);                                  \
           EB_FILTER_ {                                                                      \
-            OMP("omp task untied firstprivate(ebp_k__)")                                    \
+            OMP("omp task untied firstprivate(eb__)")                                       \
             for(uint64_t i__ = 0; i__ < eb__->high; i__++) {                                \
               if(!stinger_eb_is_blank(eb__, i__)) {                                         \
                 const struct stinger_edge local_current_edge__ = eb__->edges[i__];          \
@@ -448,10 +448,9 @@ extern "C" {
         CONST_MAP_STING(STINGER_); \
         const struct stinger * restrict S__ = (STINGER_);             \
         const int64_t etype__ = (TYPE_);                              \
-        const struct stinger_eb * restrict ebp__ = ebpool->ebpool;	\
         stinger_parallel_for(uint64_t p__ = 0; p__ < ETA((STINGER_),(TYPE_))->high; p__++) { \
           int64_t ebp_k__ = ETA((STINGER_),(TYPE_))->blocks[p__];          \
-          eb__ = stinger_ebpool_get_eb(STINGER_, ebp_k__); \
+          const struct stinger_eb * restrict eb__ = stinger_ebpool_get_eb(STINGER_, ebp_k__); \
           const int64_t source__ = eb__->vertexID;         \
           const int64_t type__ = eb__->etype;              \
           for(uint64_t i__ = 0; i__ < eb__->high; i__++) { \
