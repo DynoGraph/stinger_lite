@@ -792,6 +792,7 @@ stinger_eb_t *
 stinger_ebpool_get_eb(struct stinger *G, eb_index_t i)
 {
     MAP_STING(G);
+    if (i == 0) { return NULL; }
 #if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
     assert(i < G->max_neblocks);
     // Using mw_arrayindex avoids migrating to the nodelet containing the ebpool pointer
@@ -1337,7 +1338,6 @@ stinger_update_directed_edge(struct stinger *G,
   }
 
   while (1) {
-    eb_index_t * block_ptr = curs.loc;
     curs.eb = readff((uint64_t *)curs.loc);
     /* 2: The edge isn't already there.  Check for an empty slot. */
     for (tmp = stinger_ebpool_get_eb(G, curs.eb); tmp != NULL; tmp = stinger_next_eb(G, tmp)) {
@@ -1382,25 +1382,25 @@ stinger_update_directed_edge(struct stinger *G,
           }
         }
       }
-      block_ptr = &(tmp->next);
+      curs.loc = &(tmp->next);
     }
 
     /* 3: Needs a new block to be inserted at end of list. */
-    eb_index_t old_eb = readfe ((uint64_t *)block_ptr );
+    eb_index_t old_eb = readfe (curs.loc);
     if (!old_eb) {
       eb_index_t newBlock = new_eb (G, type, src);
       if (newBlock == 0) {
-        writeef ((uint64_t *)block_ptr, (uint64_t)old_eb);
+        writeef (curs.loc, (uint64_t)old_eb);
         return -1;
       } else {
         update_edge_data_and_direction (G, stinger_ebpool_get_eb(G, newBlock), 0, dest, weight, timestamp, direction, EDGE_WEIGHT_SET);
         stinger_ebpool_get_eb(G, newBlock)->next = 0;
         push_ebs (G, 1, &newBlock);
       }
-      writeef ((uint64_t *)block_ptr, (uint64_t)newBlock);
+      writeef (curs.loc, (uint64_t)newBlock);
       return 1;
     }
-    writeef ((uint64_t *)block_ptr, (uint64_t)old_eb);
+    writeef (curs.loc, (uint64_t)old_eb);
   }
 
 
