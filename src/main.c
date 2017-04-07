@@ -156,9 +156,11 @@ int compare_vertex_degree(const void * lhs, const void * rhs)
     const struct vertex_degree a = *(struct vertex_degree *)lhs;
     const struct vertex_degree b = *(struct vertex_degree *)rhs;
 
-    if (a.degree < b.degree) return -1;
-    if (a.degree > b.degree) return 1;
+    // Sort by degree descending...
+    if (a.degree > b.degree) return -1;
+    if (a.degree < b.degree) return 1;
 
+    // ...then by vertex_id ascending
     if (a.vertex_id < b.vertex_id) return -1;
     if (a.vertex_id > b.vertex_id) return 1;
 
@@ -175,8 +177,8 @@ int64_t highest_degree_vertex(const struct stinger *S)
         vertex_degrees[v].vertex_id = v;
         vertex_degrees[v].degree = stinger_outdegree_get(S, v);
     }
-    qsort(vertex_degrees, nv, sizeof(int64_t), compare_vertex_degree);
-    int64_t vertex_id = vertex_degrees[nv-1].vertex_id;
+    qsort(vertex_degrees, nv, sizeof(struct vertex_degree), compare_vertex_degree);
+    int64_t vertex_id = vertex_degrees[0].vertex_id;
     free(vertex_degrees);
     return vertex_id;
 }
