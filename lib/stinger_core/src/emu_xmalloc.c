@@ -40,7 +40,9 @@ mw_arrayindex(void ** array2d, unsigned long i, unsigned long numelements, size_
 void
 mw_free(void * ptr)
 {
-    free(ptr);
+    void ** ptrs = (void**)ptr;
+    free(ptrs[0]);
+    free(ptrs);
 }
 #endif
 
