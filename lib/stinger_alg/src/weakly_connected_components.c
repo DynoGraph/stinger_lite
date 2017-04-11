@@ -19,8 +19,7 @@ parallel_shiloach_vishkin_components_of_type (struct stinger * S,  int64_t * com
   }
 
   /* Initialize each vertex with its own component label in parallel */
-  OMP ("omp parallel for")
-  for (uint64_t i = 0; i < nv; i++) {
+  stinger_parallel_for (uint64_t i = 0; i < nv; i++) {
     component_map[i] = i;
   }
 
@@ -49,9 +48,8 @@ parallel_shiloach_vishkin_components_of_type (struct stinger * S,  int64_t * com
       break;
     }
 
-    /* Tree climbing with OpenMP parallel for */
-    OMP ("omp parallel for")
-    for (uint64_t i = 0; i < nv; i++) {
+    /* Tree climbing with parallel for */
+    stinger_parallel_for (uint64_t i = 0; i < nv; i++) {
       while (component_map[i] != component_map[component_map[i]]) {
 	       component_map[i] = component_map[component_map[i]];
       }
@@ -70,13 +68,12 @@ compute_component_sizes (struct stinger * S,  int64_t * component_map, int64_t *
 {
   int64_t nv = S->max_nv;
 
-  OMP ("omp parallel for")
-  for (uint64_t i = 0; i < nv; i++) {
+
+  stinger_parallel_for (uint64_t i = 0; i < nv; i++) {
     component_size[i] = 0;
   }
 
-  OMP ("omp parallel for")
-  for (uint64_t i = 0; i < nv; i++) {
+  stinger_parallel_for (uint64_t i = 0; i < nv; i++) {
     int64_t c_num = component_map[i];
     stinger_int64_fetch_add(&component_size[c_num], 1);
   }
