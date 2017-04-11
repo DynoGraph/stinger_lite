@@ -26,8 +26,7 @@ parallel_breadth_first_search (struct stinger * S, int64_t nv,
     Qend = Qhead[nQ];
 
     while (Qstart != Qend) {
-        OMP ("omp parallel for")
-        for (int64_t j = Qstart; j < Qend; j++) {
+        stinger_parallel_for (int64_t j = Qstart; j < Qend; j++) {
             STINGER_FORALL_OUT_EDGES_OF_VTX_BEGIN (S, queue[j]) {
                 int64_t d = level[STINGER_EDGE_DEST];
                 if (d < 0) {
