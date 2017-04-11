@@ -91,7 +91,7 @@ insert_batch(struct stinger *S, struct dynograph_edge_batch batch)
     const int64_t type = 0;
     const bool directed = batch.directed;
 
-    for (int64_t i = 0; i < batch.num_edges; ++i)
+    stinger_parallel_for (int64_t i = 0; i < batch.num_edges; ++i)
     {
         const struct dynograph_edge *e = &batch.edges[i];
         if (directed)
