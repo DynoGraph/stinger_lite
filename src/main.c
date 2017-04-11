@@ -9,6 +9,8 @@
 #include <stinger_alg/kcore.h>
 #include <stinger_alg/pagerank.h>
 
+#include <stinger_core/emu_xmalloc.h>
+
 #include <dynograph_util.h>
 #include <hooks_c.h>
 
@@ -267,7 +269,8 @@ int main(int argc, char *argv[])
         struct stinger *S = stinger_new_full(&config);
 
         // Allocate data structures for the algorithm(s)
-        void *alg_data = xcalloc(sizeof(int64_t) * alg->data_per_vertex, nv);
+        //void *alg_data = xcalloc(sizeof(int64_t) * alg->data_per_vertex, nv);
+        void *alg_data = xmw_malloc1d(alg->data_per_vertex * nv);
 
         // Run the algorithm(s) after each inserted batch
         int64_t epoch = 0;
