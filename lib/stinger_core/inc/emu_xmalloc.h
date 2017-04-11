@@ -4,8 +4,10 @@
 #include "xmalloc.h"
 
 void *
-xmw_malloc2d(size_t nelem, size_t sz) FNATTR_MALLOC;
+xmw_malloc1d(size_t nelem) FNATTR_MALLOC;
 
+void *
+xmw_malloc2d(size_t nelem, size_t sz) FNATTR_MALLOC;
 
 #ifndef __le64__
 void

@@ -29,6 +29,11 @@ mw_malloc2d(size_t nelem, size_t sz)
     return ptrs;
 }
 
+void * FNATTR_MALLOC
+mw_malloc_1d(size_t nelem) {
+    return mw_malloc2d(nelem, 0);
+}
+
 void *
 mw_arrayindex(void ** array2d, unsigned long i, unsigned long numelements, size_t eltsize)
 {
@@ -45,6 +50,12 @@ mw_free(void * ptr)
     free(ptrs);
 }
 #endif
+
+void *
+xmw_malloc1d(size_t nelem)
+{
+    return xmw_malloc2d(nelem, 0);
+}
 
 void *
 xmw_malloc2d(size_t nelem, size_t sz)
