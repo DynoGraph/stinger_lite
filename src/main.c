@@ -132,6 +132,7 @@ struct alg *
 get_alg(const char *name)
 {
     struct alg *b = NULL;
+    if (!strcmp(name, "")) { return NULL; }
     for (int i = 0; i < sizeof(algs) / sizeof(algs[0]); ++i)
     {
         if (!strcmp(algs[i].name, name))
@@ -252,7 +253,7 @@ void run_alg(stinger_t * S, const char *alg_name, int64_t num_vertices, void *al
 
 int main(int argc, char *argv[])
 {
-    struct dynograph_args args;
+    struct dynograph_args args = {0};
     dynograph_args_parse(argc, argv, &args);
 
     dynograph_message("Loading dataset...");
@@ -269,8 +270,11 @@ int main(int argc, char *argv[])
         struct stinger *S = stinger_new_full(&config);
 
         // Allocate data structures for the algorithm(s)
-        //void *alg_data = xcalloc(sizeof(int64_t) * alg->data_per_vertex, nv);
-        void *alg_data = xmw_malloc1d(alg->data_per_vertex * nv);
+        void *alg_data = NULL;
+        if (alg != NULL) {
+            //void *alg_data = xcalloc(sizeof(int64_t) * alg->data_per_vertex, nv);
+            alg_data = xmw_malloc1d(alg->data_per_vertex * nv);
+        }
 
         // Run the algorithm(s) after each inserted batch
         int64_t epoch = 0;
@@ -306,6 +310,7 @@ int main(int argc, char *argv[])
                 const char *alg_name = args.alg_names;
                 // FIXME implement multiple algs
                 //for (std::string alg_name : args.alg_names)
+                if (alg != NULL)
                 {
                     // TODO implement multiple sources for BC
                     int64_t num_sources = 1;
