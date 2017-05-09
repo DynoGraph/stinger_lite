@@ -76,8 +76,14 @@ count_triangles (stinger_t * S, uint64_t v)
 void
 count_all_triangles (stinger_t * S, int64_t * ntri)
 {
+#if defined(__cilk)
+  cilk_for(size_t i = 0; i < S->max_nv; ++i){
+    ntri[i] = count_triangles (S, i);
+  }
+#else
   OMP ("omp for schedule(dynamic,128)")
   for (size_t i = 0; i < S->max_nv; ++i){
     ntri[i] = count_triangles (S, i);
   }
+#endif
 }
