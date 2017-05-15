@@ -19,6 +19,7 @@
 #else
 #define NODELETS() 1
 #define BYTES_PER_NODELET() stinger_max_memsize()
+#define replicated
 #endif
 
 // Figure out how many edge blocks we can allocate to fill STINGER_MAX_MEMSIZE
@@ -91,6 +92,7 @@ insert_batch(struct stinger *S, struct dynograph_edge_batch batch)
     const int64_t type = 0;
     const bool directed = batch.directed;
 
+    #pragma cilk grainsize = 1
     stinger_parallel_for (int64_t i = 0; i < batch.num_edges; ++i)
     {
         const struct dynograph_edge *e = &batch.edges[i];
@@ -251,6 +253,8 @@ void run_alg(stinger_t * S, const char *alg_name, int64_t num_vertices, void *al
 }
 
 
+replicated struct stinger *S;
+
 int main(int argc, char *argv[])
 {
     struct dynograph_args args = {0};
@@ -267,7 +271,12 @@ int main(int argc, char *argv[])
 
         int64_t nv = dataset->max_vertex_id + 1;
         struct stinger_config_t config = generate_stinger_config(nv);
-        struct stinger *S = stinger_new_full(&config);
+
+        #if defined(__le64__)
+        mw_replicated_init(&S, stinger_new_full(&config));
+        #else
+        S = stinger_new_full(&config);
+        #endif
 
         // Allocate data structures for the algorithm(s)
         void *alg_data = NULL;
