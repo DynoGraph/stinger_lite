@@ -812,7 +812,8 @@ stinger_etype_array_new(int64_t nebs)
   eta = xcalloc(sizeof(struct stinger_etype_array) + nebs * sizeof(eb_index_t), 1);
 #else
   eta = xcalloc(sizeof(struct stinger_etype_array), 1);
-  eta->blocks = xcalloc(nebs, sizeof(eb_index_t));
+  assert(sizeof(eb_index_t) == 8);
+  eta->blocks = xmw_malloc1d(nebs);
 #endif
   stinger_etype_array_init(eta, nebs);
   return eta;
@@ -823,7 +824,7 @@ stinger_etype_array_free(struct stinger_etype_array** eta)
 {
   if (*eta) {
 #ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
-    free((*eta)->blocks);
+    mw_free((*eta)->blocks);
 #endif
     free(*eta);
     *eta = NULL;
