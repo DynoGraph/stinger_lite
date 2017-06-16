@@ -22,6 +22,8 @@
 #define replicated
 #endif
 
+#include "layout.h"
+
 // Figure out how many edge blocks we can allocate to fill STINGER_MAX_MEMSIZE
 // Assumes we need just enough room for nv vertices and puts the rest into edge blocks
 // Basically implements calculate_stinger_size() in reverse
@@ -112,6 +114,58 @@ void record_graph_size(struct stinger *S)
     int64_t num_edges = stinger_edges_up_to(S, max_active_nv);
     hooks_set_attr_i64("num_vertices", max_active_nv);
     hooks_set_attr_i64("num_edges", num_edges);
+}
+
+void record_graph_distribution(struct stinger *S)
+{
+    #if defined(__le64__)
+
+    dynograph_message("Recording graph distribution");
+    int64_t nv = stinger_max_nv(S);
+    int64_t * num_local_edgeblocks = xcalloc(sizeof(int64_t), nv);
+    int64_t * num_edgeblocks = xcalloc(sizeof(int64_t), nv);
+
+    // For each edge block...
+    MAP_STING(S);
+
+    uint64_t type = 0;
+    for(uint64_t p = 0; p < ETA(S,type)->high; p++) {
+        struct stinger_eb * eb = stinger_ebpool_get_eb(S, ETA(S,type)->blocks[p]);
+
+        printf("Edge block: "); print_emu_pointer(eb);
+
+        int64_t source = eb->vertexID;
+        struct stinger_vertex * vertex = stinger_vertices_vertex_get(S->vertices, source);
+        printf(" Vertex ptr: "); print_emu_pointer(vertex);
+        printf("\n");
+
+        // Count total # of edge blocks
+        num_edgeblocks[source] += 1;
+        // Count # of edge blocks that are on the same node as their source vertex
+        if (pointers_are_on_same_nodelet(vertex, eb))
+        {
+            num_local_edgeblocks[source] += 1;
+        }
+    }
+
+    // TODO - calculate more statistics here.
+    int64_t total_num_local_edgeblocks = 0;
+    int64_t total_num_edgeblocks = 0;
+
+    for (int64_t v = 0; v < nv; ++v)
+    {
+        total_num_edgeblocks += num_edgeblocks[v];
+        total_num_local_edgeblocks += num_local_edgeblocks[v];
+    }
+    double percent_local_edges = 100 * (double)total_num_local_edgeblocks / (double)total_num_edgeblocks;
+
+    hooks_set_attr_u64("total_num_edgeblocks", total_num_edgeblocks);
+    hooks_set_attr_u64("total_num_local_edgeblocks", total_num_local_edgeblocks);
+    hooks_set_attr_f64("percent_local_edges", percent_local_edges);
+    xfree(num_local_edgeblocks);
+    xfree(num_edgeblocks);
+
+    #endif
 }
 
 struct alg
@@ -312,6 +366,8 @@ int main(int argc, char *argv[])
             hooks_region_begin("insertions");
             insert_batch(S, batch);
             hooks_region_end();
+
+            record_graph_distribution(S);
 
             if (dynograph_enable_algs_for_batch(dataset, batch_id))
             {
