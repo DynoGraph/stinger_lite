@@ -68,7 +68,9 @@ Should print V1:1:1:1[1] when m = 33
 
 int pointers_are_on_same_nodelet(void * a, void *b)
 {
-    return examine_emu_pointer(a).nodelet_id == examine_emu_pointer(b).nodelet_id;
+    struct emu_pointer ptr_a = examine_emu_pointer(a);
+    struct emu_pointer ptr_b = examine_emu_pointer(b);
+    return ptr_a.node_id == ptr_b.node_id && ptr_a.nodelet_id == ptr_b.nodelet_id;
 }
 
 // These functions don't really do anything on a non-emu system, but we still want it to compile

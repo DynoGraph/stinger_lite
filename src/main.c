@@ -303,7 +303,7 @@ void run_alg(stinger_t * S, const char *alg_name, int64_t num_vertices, void *al
 }
 
 
-replicated struct stinger *S;
+replicated struct stinger local_S;
 
 int main(int argc, char *argv[])
 {
@@ -322,10 +322,26 @@ int main(int argc, char *argv[])
         int64_t nv = dataset->max_vertex_id + 1;
         struct stinger_config_t config = generate_stinger_config(nv);
 
+        struct stinger *S = stinger_new_full(&config);
+
         #if defined(__le64__)
-        mw_replicated_init(&S, stinger_new_full(&config));
-        #else
-        S = stinger_new_full(&config);
+        /*
+            The stinger struct contains the pointers to each distributed data structure.
+            All threads will need to access it, and it won't change after allocation.
+            So we replicate it to each nodelet to avoid unnecessary migrations
+        */
+        // For each nodelet...
+        for (size_t i = 0; i < NODELETS(); ++i)
+        {
+            // Get a pointer to the storage reserved for the local copy of the stinger struct
+            struct stinger *local_ptr = mw_get_nth(&local_S, i);
+            // Fill it with valid pointers
+            memcpy(local_ptr, S, sizeof(struct stinger));
+        }
+        // Keep track of the original allocation so we can free it
+        struct stinger *alloced_S = S;
+        // From now on always use the local copy of S
+        S = &local_S;
         #endif
 
         // Allocate data structures for the algorithm(s)
@@ -389,7 +405,7 @@ int main(int argc, char *argv[])
         }
         assert(epoch == args.num_epochs);
         dynograph_message("Shutting down stinger...");
-        stinger_free(S);
+        stinger_free(alloced_S);
     }
 
     dynograph_free_dataset(dataset);
