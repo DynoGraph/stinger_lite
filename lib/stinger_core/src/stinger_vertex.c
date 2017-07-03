@@ -21,7 +21,7 @@ stinger_vertices_new(int64_t max_vertices)
   rtn->vertices = xcalloc(max_vertices, sizeof(stinger_vertex_t));
 #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
   stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t));
-  rtn->vertices = xmw_malloc2d(max_vertices, sizeof(stinger_vertex_t));
+  emu_striped_array_init(&rtn->vertices, max_vertices, sizeof(stinger_vertex_t));
 #endif
   stinger_vertices_init(rtn, max_vertices);
   return rtn;
@@ -48,7 +48,7 @@ stinger_vertices_free(stinger_vertices_t ** vertices)
 #if defined(STINGER_USE_MULTIPLE_ALLOCATION)
     free ((*vertices)->vertices);
 #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-    mw_free((*vertices)->vertices);
+    emu_striped_array_free(&(*vertices)->vertices);
 #endif
     free(*vertices);
   }
@@ -62,12 +62,7 @@ stinger_vertices_vertex_get(const stinger_vertices_t * vertices, vindex_t v)
     return NULL;
   }
 #if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-  return mw_arrayindex(
-    vertices->vertices,
-    (unsigned long)v,
-    (unsigned long)vertices->max_vertices,
-    sizeof(stinger_vertex_t)
-  );
+  return (stinger_vertex_t*)emu_striped_array_index(&vertices->vertices, v);
 #else
   return &(vertices->vertices[v]);
 #endif

@@ -13,6 +13,7 @@
 #include "core_util.h"
 #include "xmalloc.h"
 #include "emu_xmalloc.h"
+#include "emu-array.h"
 #include "x86_full_empty.h"
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
@@ -755,7 +756,7 @@ stinger_ebpool_new(int64_t nebs)
   ebpool->ebpool = xcalloc(nebs, sizeof(struct stinger_eb));
 #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
   ebpool = xcalloc(sizeof(struct stinger_ebpool), 1);
-  ebpool->ebpool = xmw_malloc2d(nebs, sizeof(struct stinger_eb));
+  emu_striped_array_init(&ebpool->pool, nebs, sizeof(struct stinger_eb));
 #endif
   stinger_ebpool_init(ebpool);
   return ebpool;
@@ -768,7 +769,7 @@ stinger_ebpool_free(struct stinger_ebpool ** ebpool)
 #if defined(STINGER_USE_MULTIPLE_ALLOCATION)
     free((*ebpool)->ebpool);
 #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-    mw_free((*ebpool)->ebpool);
+    emu_striped_array_free(&(*ebpool)->pool);
 #endif
     free(*ebpool);
     *ebpool = NULL;
@@ -794,11 +795,7 @@ stinger_ebpool_get_eb(struct stinger *G, eb_index_t i)
     MAP_STING(G);
     if (i == 0) { return NULL; }
 #if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-    assert(i < G->max_neblocks);
-    // Using mw_arrayindex avoids migrating to the nodelet containing the ebpool pointer
-    // Otherwise equivalent to:
-    // return ebpool->ebpool[i];
-    return mw_arrayindex((void**)ebpool->ebpool, i, G->max_neblocks, sizeof(stinger_eb_t));
+    return (stinger_eb_t*)emu_striped_array_index(&ebpool->pool, i);
 #else
     return ebpool->ebpool + i;
 #endif
@@ -1138,7 +1135,7 @@ new_blk_ebs (eb_index_t *out, const struct stinger *restrict G,
     stinger_parallel_for (int64_t v = 0; v < nvtx; ++v) {
       const int64_t from = v;
       const size_t blkend = blkoff[v + 1];
-      
+
       for (size_t k = blkoff[v]; k < blkend; ++k) {
         stinger_ebpool_get_eb(G, out[k])->vertexID = from;
       }

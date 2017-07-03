@@ -10,6 +10,7 @@ extern "C" {
 #include <stdio.h>
 
 #include "stinger_names.h"
+#include "emu-array.h"
 
 typedef int64_t adjacency_t;
 
@@ -85,7 +86,7 @@ struct stinger_vertices
 #elif defined(STINGER_USE_MULTIPLE_ALLOCATION)
   stinger_vertex_t *vertices;
 #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-  stinger_vertex_t **vertices;
+  struct emu_striped_array vertices;
 #endif
 };
 

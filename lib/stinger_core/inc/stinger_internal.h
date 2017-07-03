@@ -6,6 +6,8 @@
 extern "C" {
 #endif
 
+#include "emu-array.h"
+
 #define STINGER_EDGE_DIRECTION_MASK (0x6000000000000000L)
 #define STINGER_EDGE_DIRECTION_OUT (0x4000000000000000L)
 #define STINGER_EDGE_DIRECTION_IN (0x2000000000000000L)
@@ -148,7 +150,7 @@ struct stinger_ebpool {
 #elif defined(STINGER_USE_MULTIPLE_ALLOCATION)
   struct stinger_eb *ebpool;
 #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-  struct stinger_eb **ebpool;
+  struct emu_striped_array pool;
 #endif
 };
 
