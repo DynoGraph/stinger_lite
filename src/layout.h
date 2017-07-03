@@ -1,7 +1,7 @@
 #ifndef EMU_LAYOUT_H
 #define EMU_LAYOUT_H
 
-#include <memoryweb.h>
+#include <inttypes.h>
 
 struct emu_pointer {
     uint64_t view;

@@ -1,7 +1,11 @@
 #include "layout.h"
-#include <memoryweb.h>
+
 #include <assert.h>
 #include <stdio.h>
+
+#if defined(__le64__)
+
+#include <memoryweb.h>
 
 uint64_t grab_bits(uint64_t x, size_t begin, size_t end)
 {
@@ -66,3 +70,25 @@ int pointers_are_on_same_nodelet(void * a, void *b)
 {
     return examine_emu_pointer(a).nodelet_id == examine_emu_pointer(b).nodelet_id;
 }
+
+// These functions don't really do anything on a non-emu system, but we still want it to compile
+#else
+
+struct emu_pointer
+examine_emu_pointer(void * ptr)
+{
+    struct emu_pointer p = {0};
+    return p;
+}
+
+void print_emu_pointer(void * ptr)
+{
+    printf("%p", ptr);
+}
+
+int pointers_are_on_same_nodelet(void * a, void *b)
+{
+    return 1;
+}
+
+#endif
