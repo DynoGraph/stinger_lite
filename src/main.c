@@ -132,12 +132,8 @@ void record_graph_distribution(struct stinger *S)
     for(uint64_t p = 0; p < ETA(S,type)->high; p++) {
         struct stinger_eb * eb = stinger_ebpool_get_eb(S, ETA(S,type)->blocks[p]);
 
-        printf("Edge block: "); print_emu_pointer(eb);
-
         int64_t source = eb->vertexID;
         struct stinger_vertex * vertex = stinger_vertices_vertex_get(S->vertices, source);
-        printf(" Vertex ptr: "); print_emu_pointer(vertex);
-        printf("\n");
 
         // Count total # of edge blocks
         num_edgeblocks[source] += 1;
