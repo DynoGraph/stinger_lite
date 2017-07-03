@@ -1,12 +1,7 @@
 #include <assert.h>
 #include <memoryweb.h>
 
-struct emu_striped_array
-{
-    void ** data;
-    size_t num_elements;
-    size_t element_size;
-};
+#include "emu-array.h"
 
 void
 emu_striped_array_init(struct emu_striped_array * self, size_t num_elements, size_t element_size)
@@ -45,14 +40,6 @@ emu_striped_array_size(struct emu_striped_array * self)
 
 
 // Blocked array type
-
-struct emu_blocked_array
-{
-    void ** data;
-    size_t num_elements;
-    size_t element_size;
-    size_t elements_per_nodelet;
-};
 
 void
 emu_blocked_array_init(struct emu_blocked_array * self, size_t num_elements, size_t element_size)
