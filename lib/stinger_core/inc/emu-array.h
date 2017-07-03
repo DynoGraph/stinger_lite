@@ -1,6 +1,8 @@
 #ifndef EMU_ARRAY_H
 #define EMU_ARRAY_H
 
+#include <stddef.h>
+
 struct emu_striped_array
 {
     void ** data;

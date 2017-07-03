@@ -1,7 +1,14 @@
-#include <assert.h>
-#include <memoryweb.h>
-
 #include "emu-array.h"
+#include "emu_xmalloc.h"
+
+#if defined(__le64__)
+#include <memoryweb.h>
+#else
+#define NODELETS() 1
+#endif
+
+#include <assert.h>
+
 
 void
 emu_striped_array_init(struct emu_striped_array * self, size_t num_elements, size_t element_size)
@@ -9,7 +16,7 @@ emu_striped_array_init(struct emu_striped_array * self, size_t num_elements, siz
     assert(!self->data);
     self->num_elements = num_elements;
     self->element_size = element_size;
-    self->data = mw_malloc2d(num_elements, element_size);
+    self->data = xmw_malloc2d(num_elements, element_size);
     assert(self->data);
 }
 
@@ -48,12 +55,12 @@ emu_blocked_array_init(struct emu_blocked_array * self, size_t num_elements, siz
     self->num_elements = num_elements;
     self->element_size = element_size;
     self->elements_per_nodelet = ((num_elements + NODELETS()) / NODELETS()) - 1; // round up
-    self->data = mw_malloc2d(NODELETS(), self->elements_per_nodelet * element_size);
+    self->data = xmw_malloc2d(NODELETS(), self->elements_per_nodelet * element_size);
     assert(self->data);
 }
 
 void
-emu_blocked_array_free(struct emu_striped_array * self)
+emu_blocked_array_free(struct emu_blocked_array * self)
 {
     assert(self->data);
     mw_free(self->data);
