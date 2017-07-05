@@ -21,15 +21,12 @@ set(STINGER_NAME_STR_MAX "255" CACHE STRING "Max string length in physmap")
 set(STINGER_ALLOCATION_STRATEGY "CONTIGUOUS" CACHE STRING
   "Controls the way the stinger data structure is allocated. Options are:
   CONTIGUOUS: Use a single memory allocation for the entire stinger data structure. Must be enabled to use shared memory.
-  DISTRIBUTED: Distribute the stinger data structure across memory in a platform-dependent manner.
-  MULTIPLE: Allocate each sub-structure separately and store pointers to each one."
+  DISTRIBUTED: Distribute the stinger data structure across memory in a platform-dependent manner."
 )
 if(STINGER_ALLOCATION_STRATEGY STREQUAL "CONTIGUOUS")
   add_definitions(-DSTINGER_USE_CONTIGUOUS_ALLOCATION)
 elseif(STINGER_ALLOCATION_STRATEGY STREQUAL "DISTRIBUTED")
   add_definitions(-DSTINGER_USE_DISTRIBUTED_ALLOCATION)
-elseif(STINGER_ALLOCATION_STRATEGY STREQUAL "MULTIPLE")
-  add_definitions(-DSTINGER_USE_MULTIPLE_ALLOCATION)
 else()
   message(FATAL_ERROR "'${STINGER_ALLOCATION_STRATEGY}' is not a valid allocation strategy.")
 endif()
