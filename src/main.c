@@ -133,7 +133,7 @@ void record_graph_distribution(struct stinger *S)
         struct stinger_eb * eb = stinger_ebpool_get_eb(S, ETA(S,type)->blocks[p]);
 
         int64_t source = eb->vertexID;
-        struct stinger_vertex * vertex = stinger_vertices_vertex_get(S->vertices, source);
+        struct stinger_vertex * vertex = stinger_vertices_vertex_get(vertices, source);
 
         // Count total # of edge blocks
         num_edgeblocks[source] += 1;
@@ -405,7 +405,11 @@ int main(int argc, char *argv[])
         }
         assert(epoch == args.num_epochs);
         dynograph_message("Shutting down stinger...");
+        #if defined(__le64__)
         stinger_free(alloced_S);
+        #else
+        stinger_free(S);
+        #endif
     }
 
     dynograph_free_dataset(dataset);
