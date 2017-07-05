@@ -33,23 +33,23 @@ extern "C" {
 
 #define ETA(X,Y) ((struct stinger_etype_array *)(_ETA + ((Y)*stinger_etype_array_size((X)->max_neblocks))))
 
-#else // !defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
+#elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
 
 #define MAP_STING(X) \
-  stinger_vertices_t * vertices = (X)->vertices; \
-  stinger_physmap_t * physmap = (X)->physmap; \
-  stinger_names_t * etype_names = (X)->etype_names; \
-  stinger_names_t * vtype_names = (X)->vtype_names; \
-  struct stinger_etype_array ** _eta_list = (X)->eta_list; \
-  struct stinger_ebpool * ebpool = (X)->ebpool;
+  stinger_vertices_t * vertices = &(X)->vertices; \
+  stinger_physmap_t * physmap = &(X)->physmap; \
+  stinger_names_t * etype_names = &(X)->etype_names; \
+  stinger_names_t * vtype_names = &(X)->vtype_names; \
+  struct stinger_etype_array ** _eta_list = &(X)->eta_list; \
+  struct stinger_ebpool * ebpool = &(X)->ebpool;
 
 #define CONST_MAP_STING(X) \
-  const stinger_vertices_t * vertices = (X)->vertices; \
-  const stinger_physmap_t * physmap = (X)->physmap; \
-  const stinger_names_t * etype_names = (X)->etype_names; \
-  const stinger_names_t * vtype_names = (X)->vtype_names; \
-  const struct stinger_etype_array * const * _eta_list = (X)->eta_list; \
-  const struct stinger_ebpool * ebpool = (X)->ebpool;
+  const stinger_vertices_t * vertices = &(X)->vertices; \
+  const stinger_physmap_t * physmap = &(X)->physmap; \
+  const stinger_names_t * etype_names = &(X)->etype_names; \
+  const stinger_names_t * vtype_names = &(X)->vtype_names; \
+  const struct stinger_etype_array * const * _eta_list = &(X)->eta_list; \
+  const struct stinger_ebpool * ebpool = &(X)->ebpool;
 
 #define ETA(X,Y) (_eta_list[Y])
 
@@ -147,8 +147,6 @@ struct stinger_ebpool {
   uint8_t is_shared;
 #if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
   struct stinger_eb ebpool[0];
-#elif defined(STINGER_USE_MULTIPLE_ALLOCATION)
-  struct stinger_eb *ebpool;
 #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
   struct emu_striped_array pool;
 #endif
@@ -187,13 +185,13 @@ struct stinger
   uint64_t cache_pad[5]; /* Force storage[0] to be cache-block aligned */
 
   uint8_t storage[0];
-#else // !defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
-  stinger_vertices_t* vertices;
-  stinger_physmap_t* physmap;
-  stinger_names_t* etype_names;
-  stinger_names_t* vtype_names;
-  struct stinger_etype_array ** eta_list;
-  struct stinger_ebpool * ebpool;
+#elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION) // !defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
+  stinger_vertices_t vertices;
+  stinger_physmap_t physmap;
+  stinger_names_t etype_names;
+  stinger_names_t vtype_names;
+  struct stinger_etype_array* eta_list[STINGER_DEFAULT_NUMETYPES]; // HACK need to constrain max # of etypes
+  struct stinger_ebpool ebpool;
 #endif
 };
 

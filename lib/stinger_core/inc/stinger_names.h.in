@@ -53,6 +53,9 @@ void
 stinger_names_init(stinger_names_t * sn, int64_t max_types);
 
 void
+stinger_names_deinit(stinger_names_t * sn);
+
+void
 stinger_names_resize(stinger_names_t ** sn, int64_t max_types);
 
 size_t

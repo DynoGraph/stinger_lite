@@ -63,7 +63,6 @@ extern "C" {
 #include <fcntl.h>
 
 #if !defined(STINGER_USE_CONTIGUOUS_ALLOCATION) \
-&&  !defined(STINGER_USE_MULTIPLE_ALLOCATION) \
 &&  !defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
 #error "No allocation strategy defined"
 #endif

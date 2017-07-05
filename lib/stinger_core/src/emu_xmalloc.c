@@ -20,8 +20,12 @@
 void * FNATTR_MALLOC
 mw_malloc2d(size_t nelem, size_t sz)
 {
-    void ** ptrs = xcalloc(nelem, 8);
-    void * data = xcalloc(nelem, sz);
+    // We need an 8-byte pointer for each element, plus the array of elements
+    size_t bytes = nelem * 8 + nelem * sz;
+    void ** ptrs = xcalloc(bytes, 1);
+    // Skip past the pointers to get to the raw array
+    void * data = (void*) ptrs + (nelem * 8);
+    // Assign pointer to each element
     for (size_t i = 0; i < nelem; ++i)
     {
         ptrs[i] = data + i * sz;
@@ -31,7 +35,7 @@ mw_malloc2d(size_t nelem, size_t sz)
 
 void * FNATTR_MALLOC
 mw_malloc_1d(size_t nelem) {
-    return mw_malloc2d(nelem, 0);
+    return xcalloc(nelem, 8);
 }
 
 void *
@@ -45,9 +49,7 @@ mw_arrayindex(void ** array2d, unsigned long i, unsigned long numelements, size_
 void
 mw_free(void * ptr)
 {
-    void ** ptrs = (void**)ptr;
-    free(ptrs[0]);
-    free(ptrs);
+    free(ptr);
 }
 #endif
 

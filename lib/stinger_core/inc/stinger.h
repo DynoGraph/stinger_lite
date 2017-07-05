@@ -371,7 +371,10 @@ void
 stinger_ebpool_free(struct stinger_ebpool ** ebpool);
 
 void
-stinger_ebpool_init(struct stinger_ebpool * ebpool);
+stinger_ebpool_init(struct stinger_ebpool * ebpool, int64_t nebs);
+
+void
+stinger_ebpool_deinit(struct stinger_ebpool * ebpool);
 
 size_t
 stinger_ebpool_size(int64_t nebs);
@@ -391,6 +394,9 @@ stinger_etype_array_free(struct stinger_etype_array** eta);
 
 void
 stinger_etype_array_init(struct stinger_etype_array* eta, int64_t nebs);
+
+void
+stinger_etype_array_deinit(struct stinger_etype_array* eta);
 
 size_t
 stinger_etype_array_size(int64_t nebs);

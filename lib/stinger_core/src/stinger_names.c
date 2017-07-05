@@ -79,12 +79,8 @@ stinger_names_new(int64_t max_types) {
       (max_types * (NAME_STR_MAX+1) * sizeof(char)) +  /* strings */
       (max_types * sizeof(int64_t) * 3) + /* from_name + to_name */
       (max_types * sizeof(int64_t) * 2), sizeof(uint8_t)); /* to_int */
-#else
+#elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
   stinger_names_t * sn = xcalloc(sizeof(stinger_names_t), 1);
-  sn->storage = xcalloc(
-      (max_types * (NAME_STR_MAX+1) * sizeof(char)) +  /* strings */
-      (max_types * sizeof(int64_t) * 3) + /* from_name + to_name */
-      (max_types * sizeof(int64_t) * 2), sizeof(uint8_t)); /* to_int */
 #endif
 
   stinger_names_init(sn, max_types);
@@ -94,11 +90,14 @@ stinger_names_new(int64_t max_types) {
 
 void
 stinger_names_init(stinger_names_t * sn, int64_t max_types) {
-  //  stinger_names_t * sn = xcalloc(sizeof(stinger_names_t) +
-  //		(max_types * (NAME_STR_MAX+1) * sizeof(char)) +  /* strings */
-  //		(max_types * sizeof(int64_t) * 3) + /* from_name + to_name */
-  //		(max_types * sizeof(int64_t) * 2), sizeof(uint8_t)); /* to_int */
-  //
+#if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+  // TODO distribute across nodelets
+  sn->storage = xcalloc(
+      (max_types * (NAME_STR_MAX+1) * sizeof(char)) +  /* strings */
+      (max_types * sizeof(int64_t) * 3) + /* from_name + to_name */
+      (max_types * sizeof(int64_t) * 2), sizeof(uint8_t)); /* to_int */
+#endif
+
   sn->to_name_start = max_types * (NAME_STR_MAX+1) * sizeof(char);
   sn->from_name_start = sn->to_name_start + max_types * sizeof(int64_t);
   sn->to_int_start = sn->from_name_start + max_types * sizeof(int64_t) * 2;
@@ -109,6 +108,13 @@ stinger_names_init(stinger_names_t * sn, int64_t max_types) {
   sn->max_names = max_types * (NAME_STR_MAX+1) - 1;
 
   return;
+}
+
+void
+stinger_names_deinit(stinger_names_t * sn) {
+#if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+  free(sn->storage);
+#endif
 }
 
 /**
@@ -163,9 +169,7 @@ stinger_names_size(int64_t max_types) {
 stinger_names_t *
 stinger_names_free(stinger_names_t ** sn) {
   if(sn && *sn) {
-#ifndef STINGER_USE_CONTIGUOUS_ALLOCATION
-    free ((*sn)->storage);
-#endif
+    stinger_names_deinit(*sn);
     free(*sn);
     *sn = NULL;
   }

@@ -83,8 +83,6 @@ struct stinger_vertices
   int64_t	    max_vertices;
 #if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
   stinger_vertex_t  vertices[0];
-#elif defined(STINGER_USE_MULTIPLE_ALLOCATION)
-  stinger_vertex_t *vertices;
 #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
   struct emu_striped_array vertices;
 #endif
@@ -171,6 +169,9 @@ stinger_vertices_new(int64_t max_vertices);
 
 void
 stinger_vertices_init(stinger_vertices_t * S, int64_t max_vertices);
+
+void
+stinger_vertices_deinit(stinger_vertices_t * S);
 
 size_t
 stinger_vertices_size(int64_t max_vertices);

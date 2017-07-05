@@ -16,12 +16,8 @@ stinger_vertices_new(int64_t max_vertices)
 {
 #if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
   stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t) + max_vertices * sizeof(stinger_vertex_t));
-#elif defined(STINGER_USE_MULTIPLE_ALLOCATION)
-    stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t));
-  rtn->vertices = xcalloc(max_vertices, sizeof(stinger_vertex_t));
 #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
   stinger_vertices_t * rtn = xcalloc(1, sizeof(stinger_vertices_t));
-  emu_striped_array_init(&rtn->vertices, max_vertices, sizeof(stinger_vertex_t));
 #endif
   stinger_vertices_init(rtn, max_vertices);
   return rtn;
@@ -30,6 +26,9 @@ stinger_vertices_new(int64_t max_vertices)
 inline void
 stinger_vertices_init(stinger_vertices_t * S, int64_t max_vertices)
 {
+#if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+  emu_striped_array_init(&S->vertices, max_vertices, sizeof(stinger_vertex_t));
+#endif
   S->max_vertices = max_vertices;
   return;
 }
@@ -42,14 +41,19 @@ stinger_vertices_size(int64_t max_vertices)
 }
 
 inline void
+stinger_vertices_deinit(stinger_vertices_t * S)
+{
+#if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+  emu_striped_array_deinit(&S->vertices);
+#endif
+  return;
+}
+
+inline void
 stinger_vertices_free(stinger_vertices_t ** vertices)
 {
   if(*vertices){
-#if defined(STINGER_USE_MULTIPLE_ALLOCATION)
-    free ((*vertices)->vertices);
-#elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-    emu_striped_array_free(&(*vertices)->vertices);
-#endif
+    stinger_vertices_deinit(*vertices);
     free(*vertices);
   }
   *vertices = NULL;
