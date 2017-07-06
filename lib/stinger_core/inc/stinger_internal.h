@@ -220,7 +220,7 @@ struct curs
   eb_index_t eb, *loc;
 };
 
-static inline struct stinger_eb *
+struct stinger_eb *
 stinger_next_eb (struct stinger *G,
                  struct stinger_eb *eb_);
 
