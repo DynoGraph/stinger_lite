@@ -114,6 +114,10 @@ void record_graph_size(struct stinger *S)
     int64_t num_edges = stinger_edges_up_to(S, max_active_nv);
     hooks_set_attr_i64("num_vertices", max_active_nv);
     hooks_set_attr_i64("num_edges", num_edges);
+    if (stinger_consistency_check(S, S->max_nv))
+    {
+        dynograph_error("Consistency check failed");
+    }
 }
 
 void record_graph_distribution(struct stinger *S)
@@ -121,27 +125,43 @@ void record_graph_distribution(struct stinger *S)
     #if defined(__le64__)
 
     dynograph_message("Recording graph distribution");
-    int64_t nv = stinger_max_nv(S);
+    int64_t nv = stinger_max_active_vertex(S) + 1;
     int64_t * num_local_edgeblocks = xcalloc(sizeof(int64_t), nv);
     int64_t * num_edgeblocks = xcalloc(sizeof(int64_t), nv);
+    int64_t num_edgeblock_migrations = 0;
 
     // For each edge block...
     MAP_STING(S);
 
-    uint64_t type = 0;
-    for(uint64_t p = 0; p < ETA(S,type)->high; p++) {
-        struct stinger_eb * eb = stinger_ebpool_get_eb(S, ETA(S,type)->blocks[p]);
-
-        int64_t source = eb->vertexID;
+    // For each active vertex...
+    for (int64_t source = 0; source < nv; ++source)
+    {
         struct stinger_vertex * vertex = stinger_vertices_vertex_get(vertices, source);
+        struct stinger_eb * last_eb = NULL;
+        // For each edge block...
+        for (
+            struct stinger_eb * eb = stinger_ebpool_get_eb(S, (eb_index_t)stinger_vertex_edges_get(vertices, source));
+            eb != NULL;
+            eb = stinger_next_eb(S, eb)
+        ) {
+            assert(eb->vertexID == source);
+            // Count total # of edge blocks
+            num_edgeblocks[source] += 1;
+            // Count # of edge blocks that are on the same node as their source vertex
+            if (pointers_are_on_same_nodelet(vertex, eb))
+            {
+                num_local_edgeblocks[source] += 1;
+            }
 
-        // Count total # of edge blocks
-        num_edgeblocks[source] += 1;
-        // Count # of edge blocks that are on the same node as their source vertex
-        if (pointers_are_on_same_nodelet(vertex, eb))
-        {
-            num_local_edgeblocks[source] += 1;
+            // Count # of times the previous edge block was on the same nodelet
+            if (last_eb != NULL && !pointers_are_on_same_nodelet(last_eb, eb))
+            {
+                num_edgeblock_migrations += 1;
+            }
+            last_eb = eb;
+
         }
+
     }
 
     // TODO - calculate more statistics here.
@@ -157,6 +177,7 @@ void record_graph_distribution(struct stinger *S)
 
     hooks_set_attr_u64("total_num_edgeblocks", total_num_edgeblocks);
     hooks_set_attr_u64("total_num_local_edgeblocks", total_num_local_edgeblocks);
+    hooks_set_attr_u64("num_edgeblock_migrations", num_edgeblock_migrations);
     hooks_set_attr_f64("percent_local_edges", percent_local_edges);
     xfree(num_local_edgeblocks);
     xfree(num_edgeblocks);
