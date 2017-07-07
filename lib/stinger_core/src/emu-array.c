@@ -108,7 +108,7 @@ emu_blocked_array_index(struct emu_blocked_array * self, size_t i)
     assert(i < self->num_elements);
 
     void * base = mw_arrayindex(self->data, i/self->elements_per_nodelet, self->num_elements, self->element_size);
-    return base + (i % self->elements_per_nodelet); // TODO rewrite using shifts, ensure powers of 2
+    return base + (i % self->elements_per_nodelet) * self->element_size; // TODO rewrite using shifts, ensure powers of 2
 }
 
 
