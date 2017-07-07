@@ -148,7 +148,7 @@ struct stinger_ebpool {
 #if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
   struct stinger_eb ebpool[0];
 #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-  struct emu_striped_array pool;
+  struct emu_blocked_array pool;
 #endif
 };
 

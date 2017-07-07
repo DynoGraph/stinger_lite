@@ -772,7 +772,7 @@ void
 stinger_ebpool_init(struct stinger_ebpool * ebpool, int64_t nebs)
 {
 #if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-  emu_striped_array_init(&ebpool->pool, nebs, sizeof(struct stinger_eb));
+  emu_blocked_array_init(&ebpool->pool, nebs, sizeof(struct stinger_eb));
 #endif
   ebpool->ebpool_tail = 1;
   ebpool->is_shared = 0;
@@ -782,7 +782,7 @@ void
 stinger_ebpool_deinit(struct stinger_ebpool * ebpool)
 {
 #if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-  emu_striped_array_deinit(&ebpool->pool);
+  emu_blocked_array_deinit(&ebpool->pool);
 #endif
 }
 
@@ -799,7 +799,7 @@ stinger_ebpool_get_eb(struct stinger *G, eb_index_t i)
     MAP_STING(G);
     if (i == 0) { return NULL; }
 #if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-    return (stinger_eb_t*)emu_striped_array_index(&ebpool->pool, i);
+    return (stinger_eb_t*)emu_blocked_array_index(&ebpool->pool, i);
 #else
     return ebpool->ebpool + i;
 #endif
