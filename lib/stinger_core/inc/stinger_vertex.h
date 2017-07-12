@@ -84,7 +84,7 @@ struct stinger_vertices
 #if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
   stinger_vertex_t  vertices[0];
 #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-  struct emu_striped_array vertices;
+  struct emu_blocked_array vertices;
 #endif
 };
 

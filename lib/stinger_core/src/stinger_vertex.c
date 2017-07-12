@@ -27,7 +27,7 @@ inline void
 stinger_vertices_init(stinger_vertices_t * S, int64_t max_vertices)
 {
 #if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-  emu_striped_array_init(&S->vertices, max_vertices, sizeof(stinger_vertex_t));
+  emu_blocked_array_init(&S->vertices, max_vertices, sizeof(stinger_vertex_t));
 #endif
   S->max_vertices = max_vertices;
   return;
@@ -44,7 +44,7 @@ inline void
 stinger_vertices_deinit(stinger_vertices_t * S)
 {
 #if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-  emu_striped_array_deinit(&S->vertices);
+  emu_blocked_array_deinit(&S->vertices);
 #endif
   return;
 }
@@ -66,7 +66,7 @@ stinger_vertices_vertex_get(const stinger_vertices_t * vertices, vindex_t v)
     return NULL;
   }
 #if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-  return (stinger_vertex_t*)emu_striped_array_index(&vertices->vertices, v);
+  return (stinger_vertex_t*)emu_blocked_array_index(&vertices->vertices, v);
 #else
   return &(vertices->vertices[v]);
 #endif
