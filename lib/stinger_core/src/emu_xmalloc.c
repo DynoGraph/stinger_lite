@@ -79,15 +79,17 @@ xmw_calloc1d(size_t nelem)
 {
     void * out = xmw_malloc1d(nelem);
     memset(out, 0, nelem * 8);
+    return out;
 }
 
 void *
 xmw_calloc2d(size_t nelem, size_t sz)
 {
-  void * out = xmw_malloc2d(nelem, sz);
+  void ** out = xmw_malloc2d(nelem, sz);
   for (size_t i = 0; i < nelem; ++i)
   {
-    memset(out, 0, sz);
+    void * ptr = mw_arrayindex(out, i, nelem, sz);
+    memset(ptr, 0, sz);
   }
   return out;
 }
