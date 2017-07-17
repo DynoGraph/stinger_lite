@@ -24,7 +24,7 @@ emu_striped_array_init(struct emu_striped_array * self, size_t num_elements, siz
     assert(!self->data);
     self->num_elements = num_elements;
     self->element_size = element_size;
-    self->data = xmw_malloc2d(num_elements, element_size);
+    self->data = xmw_calloc2d(num_elements, element_size);
     assert(self->data);
 }
 
@@ -77,8 +77,8 @@ emu_blocked_array_init(struct emu_blocked_array * self, size_t num_elements, siz
     assert(!self->data);
     self->num_elements = num_elements;
     self->element_size = element_size;
-    self->elements_per_nodelet = ((num_elements + NODELETS()) / NODELETS()) - 1; // round up
-    self->data = xmw_malloc2d(NODELETS(), self->elements_per_nodelet * element_size);
+    self->elements_per_nodelet = ((num_elements + NODELETS() - 1) / NODELETS()); // round up
+    self->data = xmw_calloc2d(NODELETS(), self->elements_per_nodelet * element_size);
     assert(self->data);
 }
 

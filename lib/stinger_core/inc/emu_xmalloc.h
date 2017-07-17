@@ -9,6 +9,13 @@ xmw_malloc1d(size_t nelem) FNATTR_MALLOC;
 void *
 xmw_malloc2d(size_t nelem, size_t sz) FNATTR_MALLOC;
 
+void *
+xmw_calloc1d(size_t nelem) FNATTR_MALLOC;
+
+void *
+xmw_calloc2d(size_t nelem, size_t sz) FNATTR_MALLOC;
+
+
 #ifndef __le64__
 void
 mw_free(void * ptr);

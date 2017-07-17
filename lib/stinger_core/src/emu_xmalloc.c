@@ -3,6 +3,7 @@
 */
 
 #include <stdio.h>
+#include <string.h>
 #include "emu_xmalloc.h"
 
 #if defined(__le64__)
@@ -69,5 +70,24 @@ xmw_malloc2d(size_t nelem, size_t sz)
     abort();
   }
 
+  return out;
+}
+
+
+void *
+xmw_calloc1d(size_t nelem)
+{
+    void * out = xmw_malloc1d(nelem);
+    memset(out, 0, nelem * 8);
+}
+
+void *
+xmw_calloc2d(size_t nelem, size_t sz)
+{
+  void * out = xmw_malloc2d(nelem, sz);
+  for (size_t i = 0; i < nelem; ++i)
+  {
+    memset(out, 0, sz);
+  }
   return out;
 }
