@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-#include "emu-array.h"
+#include "emu_array.h"
 
 #define STINGER_EDGE_DIRECTION_MASK (0x6000000000000000L)
 #define STINGER_EDGE_DIRECTION_OUT (0x4000000000000000L)

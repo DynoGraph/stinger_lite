@@ -11,7 +11,7 @@ set(sources
 	src/xmalloc.c
 	src/emu_xmalloc.c
 	src/x86_full_empty.c
-	src/emu-array.c
+	src/emu_array.c
 )
 set(headers
 	inc/core_util.h
@@ -28,7 +28,7 @@ set(headers
 	inc/x86_full_empty.h
 	inc/xmalloc.h
 	inc/emu_xmalloc.h
-	inc/emu-array.h
+	inc/emu_array.h
 	# Only file that requires C++
 	#inc/stinger_batch_insert.h
 )

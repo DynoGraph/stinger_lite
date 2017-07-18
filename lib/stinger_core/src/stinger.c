@@ -13,7 +13,7 @@
 #include "core_util.h"
 #include "xmalloc.h"
 #include "emu_xmalloc.h"
-#include "emu-array.h"
+#include "emu_array.h"
 #include "x86_full_empty.h"
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *

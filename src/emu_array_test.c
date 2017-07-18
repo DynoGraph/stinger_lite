@@ -1,4 +1,4 @@
-#include <stinger_core/emu-array.h>
+#include <stinger_core/emu_array.h>
 
 #include <stdio.h>
 #include <stdlib.h>
