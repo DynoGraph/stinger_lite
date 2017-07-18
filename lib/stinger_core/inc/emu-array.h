@@ -26,9 +26,9 @@ size_t emu_striped_array_size();
 struct emu_blocked_array
 {
     void ** data;
-    size_t num_elements;
+    size_t num_blocks;
     size_t element_size;
-    size_t elements_per_nodelet;
+    size_t log2_elements_per_block;
 };
 
 struct emu_blocked_array * emu_blocked_array_new(size_t num_elements, size_t element_size);

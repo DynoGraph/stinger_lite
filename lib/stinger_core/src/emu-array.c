@@ -75,10 +75,19 @@ void
 emu_blocked_array_init(struct emu_blocked_array * self, size_t num_elements, size_t element_size)
 {
     assert(!self->data);
-    self->num_elements = num_elements;
     self->element_size = element_size;
-    self->elements_per_nodelet = ((num_elements + NODELETS() - 1) / NODELETS()); // round up
-    self->data = xmw_calloc2d(NODELETS(), self->elements_per_nodelet * element_size);
+
+    // We will allocate one block on each nodelet
+    self->num_blocks = NODELETS();
+
+    // How many elements in each block?
+    size_t elements_per_block = num_elements / self->num_blocks;
+    // Round up to nearest power of two
+    elements_per_block = 1 << (PRIORITY(elements_per_block) + 1);
+    self->log2_elements_per_block = PRIORITY(elements_per_block);
+
+    // Allocate a block on each nodelet
+    self->data = xmw_calloc2d(self->num_blocks, elements_per_block * element_size);
     assert(self->data);
 }
 
@@ -88,9 +97,9 @@ emu_blocked_array_deinit(struct emu_blocked_array * self)
     assert(self->data);
     mw_free(self->data);
     self->data = 0;
-    self->num_elements = 0;
+    self->num_blocks = 0;
     self->element_size = 0;
-    self->elements_per_nodelet = 0;
+    self->log2_elements_per_block = 0;
 }
 
 void
@@ -105,10 +114,24 @@ void *
 emu_blocked_array_index(struct emu_blocked_array * self, size_t i)
 {
     assert(self->data);
-    assert(i < self->num_elements);
-    void * base = mw_arrayindex(self->data, i/self->elements_per_nodelet, NODELETS(), self->elements_per_nodelet * self->element_size);
-    void * ptr = base + (i % self->elements_per_nodelet) * self->element_size;
-    return ptr; // TODO rewrite using shifts, ensure powers of 2
+
+    // Array bounds check
+    size_t elements_per_block = 1 << self->log2_elements_per_block;
+    assert(i < self->num_blocks * elements_per_block);
+
+    // First we determine which block holds element i
+    // i / N
+    size_t block = i >> self->log2_elements_per_block;
+
+    // Then calculate the position of element i within the block
+    // i % N
+    size_t mask = elements_per_block - 1;
+    size_t offset = i & mask;
+
+    // return data[i / N][i % N]
+    void * base = mw_arrayindex(self->data, block, self->num_blocks, elements_per_block * self->element_size);
+    void * ptr = base + (offset * self->element_size);
+    return ptr;
 }
 
 
@@ -116,5 +139,5 @@ size_t
 emu_blocked_array_size(struct emu_blocked_array * self)
 {
     assert(self->data);
-    return self->num_elements;
+    return (1 << self->log2_elements_per_block) * self->num_blocks;
 }
