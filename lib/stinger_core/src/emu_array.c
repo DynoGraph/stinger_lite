@@ -164,32 +164,37 @@ emu_blocked_array_allocate_local(struct emu_blocked_array * self, size_t k, size
     // Calculate local block
     size_t local_block = local_hint >> self->log2_elements_per_block;
     size_t elements_per_block = 1 << self->log2_elements_per_block;
+    size_t num_blocks_mask = self->num_blocks - 1;
 
     // Remember which block we started on
     size_t target_block = local_block;
+
+    // Get pointer to the tail value for this block
+    volatile size_t * block_tail = &self->block_tail[target_block];
+    size_t index, next_index;
+
     do {
-        // Get pointer to the tail value for this block
-        volatile size_t * block_tail = &self->block_tail[target_block];
-        size_t index, next_index;
-        do {
-            // How much room will be left if we grab k items from this block?
-            index = *block_tail;
-            next_index = index + k;
-            // Not enough room? Break out and try next block
-            if (next_index > elements_per_block) { goto next_block; }
-            // Attempt to atomically reserve k items
-            // If we fail, another thread grabbed them first so we reload and check again
-        } while (index != ATOMIC_CAS(block_tail, next_index, index));
+        // How much room will be left if we grab k items from this block?
+        index = *block_tail;
+        next_index = index + k;
 
-        // We have overwritten block_tail with the new tail value
-        return index;
+        // Will this push us past the end of the block?
+        size_t last_index = (target_block + 1) * elements_per_block;
+        if (next_index > last_index) {
+            // Move to next block
+            target_block = (target_block + 1) & num_blocks_mask;
+            if (target_block != local_block) {
+                continue;
+            } else {
+                // If we get here, we've tried all the blocks and ended up at the one we started at
+                // There is no empty space left, so crash
+                assert(0 && "Ran out of edge blocks!");
+            }
+        }
+        // Attempt to atomically reserve k items
+        // If we fail, another thread grabbed them first so we reload and check again
+    } while (index != ATOMIC_CAS(block_tail, next_index, index));
 
-next_block:
-        // Try the next block
-        target_block = (target_block + 1) % self->num_blocks; // TODO replace with shift
-
-    } while (target_block != local_block);
-    // If we get here, we've tried all the blocks and ended up at the one we started at
-    // There is no empty space left, so crash I guess
-    assert(0 && "Ran out of edge blocks!");
+    // We have overwritten block_tail with the new tail value
+    return index;
 }

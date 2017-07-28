@@ -3,6 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#define ASSERT_EQ(X, Y) \
+do {                    \
+    if (X != Y) {       \
+        printf("%llu != %llu\n", (size_t)X, (size_t)Y); \
+        assert(X == Y); \
+    }                   \
+} while (0)
 
 #if defined(__le64__)
 #include <memoryweb.h>
@@ -36,7 +43,7 @@ void emu_blocked_array_allocation_test()
     for (size_t i = 0; i < n; ++i)
     {
         size_t location = emu_blocked_array_allocate_local(&array, 1, 0);
-        assert(location == i);
+        ASSERT_EQ(location, i);
     }
 
     // Reinitialize for another test
@@ -44,10 +51,14 @@ void emu_blocked_array_allocation_test()
     emu_blocked_array_init(&array, n, sizeof(int));
 
     // Ask for one element from each nodelet
-    for (size_t hint = 0; hint < NODELETS(); ++hint)
+    for (size_t i = 0; i < NODELETS(); ++i)
     {
-        size_t location = emu_blocked_array_allocate_local(&array, 1, hint << array.log2_elements_per_block);
-        assert(location == hint);
+        size_t hint = i << array.log2_elements_per_block;
+        size_t location = emu_blocked_array_allocate_local(&array, 1, hint);
+        ASSERT_EQ(location, hint);
+        // The next item allocated should be adjacent on the same nodelet
+        location = emu_blocked_array_allocate_local(&array, 1, hint);
+        ASSERT_EQ(location, hint + 1);
     }
 
     // Deallocate array
