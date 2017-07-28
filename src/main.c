@@ -114,10 +114,10 @@ void record_graph_size(struct stinger *S)
     int64_t num_edges = stinger_edges_up_to(S, max_active_nv);
     hooks_set_attr_i64("num_vertices", max_active_nv);
     hooks_set_attr_i64("num_edges", num_edges);
-    if (stinger_consistency_check(S, S->max_nv))
-    {
-        dynograph_error("Consistency check failed");
-    }
+    // if (stinger_consistency_check(S, S->max_nv))
+    // {
+    //     dynograph_error("Consistency check failed");
+    // }
 }
 
 void record_graph_distribution(struct stinger *S)
@@ -343,9 +343,11 @@ int main(int argc, char *argv[])
         int64_t nv = dataset->max_vertex_id + 1;
         struct stinger_config_t config = generate_stinger_config(nv);
 
+        dynograph_message("Initializing stinger...");
         struct stinger *S = stinger_new_full(&config);
 
         #if defined(__le64__)
+        dynograph_message("Replicating stinger struct...");
         /*
             The stinger struct contains the pointers to each distributed data structure.
             All threads will need to access it, and it won't change after allocation.
@@ -365,6 +367,7 @@ int main(int argc, char *argv[])
         S = &local_S;
         #endif
 
+        dynograph_message("Allocating alg data...");
         // Allocate data structures for the algorithm(s)
         void *alg_data = NULL;
         if (alg != NULL) {
