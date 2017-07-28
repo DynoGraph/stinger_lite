@@ -242,7 +242,17 @@ stinger_etype_names_count(const stinger_t * S) {
 /* TODO XXX Rework / possibly move EB POOL functions */
 
 
+static void
+get_from_local_ebpool(const struct stinger *S, eb_index_t *out, size_t k, eb_index_t local_to)
+{
+  MAP_STING(S);
 
+  eb_index_t ebt0 = (eb_index_t)emu_blocked_array_allocate_local(&ebpool->pool, k, local_to);
+
+  stinger_parallel_for (size_t ki = 0; ki < k; ++ki)
+    out[ki] = ebt0 + ki;
+
+}
  
 static void
 get_from_ebpool (const struct stinger * S, eb_index_t *out, size_t k)

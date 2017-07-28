@@ -89,6 +89,15 @@ emu_blocked_array_init(struct emu_blocked_array * self, size_t num_elements, siz
     // Allocate a block on each nodelet
     self->data = xmw_calloc2d(self->num_blocks, elements_per_block * element_size);
     assert(self->data);
+
+    // Initialize array of next indices to allocate from each block
+    // Each element should end up on the nodelet it controls
+    self->block_tail = xmw_malloc1d(self->num_blocks);
+    for (size_t i = 0; i < self->num_blocks; ++i)
+    {
+        self->block_tail[i] = i * elements_per_block;
+    }
+
 }
 
 void
@@ -140,4 +149,47 @@ emu_blocked_array_size(struct emu_blocked_array * self)
 {
     assert(self->data);
     return (1 << self->log2_elements_per_block) * self->num_blocks;
+}
+
+
+/*
+Reserves <k> contiguous elements from the blocked array <self>.
+Returns the index of the first element.
+Tries to get elements from the same block as the index <local_hint>.
+*/
+size_t
+emu_blocked_array_allocate_local(struct emu_blocked_array * self, size_t k, size_t local_hint)
+{
+    assert(self->data);
+    // Calculate local block
+    size_t local_block = local_hint >> self->log2_elements_per_block;
+    size_t elements_per_block = 1 << self->log2_elements_per_block;
+
+    // Remember which block we started on
+    size_t target_block = local_block;
+    do {
+        // Get pointer to the tail value for this block
+        volatile size_t * block_tail = &self->block_tail[target_block];
+        size_t index, next_index;
+        do {
+            // How much room will be left if we grab k items from this block?
+            index = *block_tail;
+            next_index = index + k;
+            // Not enough room? Break out and try next block
+            if (next_index > elements_per_block) { goto next_block; }
+            // Attempt to atomically reserve k items
+            // If we fail, another thread grabbed them first so we reload and check again
+        } while (index != ATOMIC_CAS(block_tail, next_index, index));
+
+        // We have overwritten block_tail with the new tail value
+        return index;
+
+next_block:
+        // Try the next block
+        target_block = (target_block + 1) % self->num_blocks; // TODO replace with shift
+
+    } while (target_block != local_block);
+    // If we get here, we've tried all the blocks and ended up at the one we started at
+    // There is no empty space left, so crash I guess
+    assert(0 && "Ran out of edge blocks!");
 }
