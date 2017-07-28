@@ -243,7 +243,7 @@ stinger_etype_names_count(const stinger_t * S) {
 
 
 static void
-get_from_local_ebpool(const struct stinger *S, eb_index_t *out, size_t k, eb_index_t local_to)
+get_from_ebpool_local(const struct stinger *S, eb_index_t *out, size_t k, eb_index_t local_to)
 {
   MAP_STING(S);
 
@@ -783,6 +783,8 @@ stinger_ebpool_init(struct stinger_ebpool * ebpool, int64_t nebs)
 {
 #if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
   emu_blocked_array_init(&ebpool->pool, nebs, sizeof(struct stinger_eb));
+  // Pop element zero, since index 0 is reserved as null pointer
+  emu_blocked_array_allocate_local(&ebpool->pool, 1, 0);
 #endif
   ebpool->ebpool_tail = 1;
   ebpool->is_shared = 0;
@@ -1093,12 +1095,12 @@ stinger_free_all (struct stinger *S)
 
 /* TODO inspect possibly move out with other EB POOL stuff */
 
-eb_index_t new_eb (struct stinger * S, int64_t etype, int64_t from)
+eb_index_t new_eb (struct stinger * S, int64_t etype, int64_t from, int64_t locality_hint)
 {
   MAP_STING(S);
   size_t k;
   eb_index_t out = 0;
-  get_from_ebpool (S, &out, 1);
+  get_from_ebpool_local (S, &out, 1, locality_hint);
   struct stinger_eb * block = stinger_ebpool_get_eb(S, out);
   assert (block != NULL);
   xzero (block, sizeof (*block));
@@ -1406,7 +1408,7 @@ stinger_update_directed_edge(struct stinger *G,
     /* 3: Needs a new block to be inserted at end of list. */
     eb_index_t old_eb = readfe (curs.loc);
     if (!old_eb) {
-      eb_index_t newBlock = new_eb (G, type, src);
+      eb_index_t newBlock = new_eb (G, type, src, old_eb);
       if (newBlock == 0) {
         writeef (curs.loc, (uint64_t)old_eb);
         return -1;
