@@ -182,6 +182,16 @@ void record_graph_distribution(struct stinger *S)
     xfree(num_local_edgeblocks);
     xfree(num_edgeblocks);
 
+    size_t elements_per_block = 1 << ebpool->pool.log2_elements_per_block;
+    for (size_t i = 0; i < NODELETS(); ++i)
+    {
+        size_t n = ebpool->pool.block_tail[i] - (i * elements_per_block);
+        double percent_eb_storage_used = 100 * (double) n / (double) elements_per_block;
+        char buf[256];
+        sprintf(buf, "percent_eb_storage_used[%i]", (int)i);
+        hooks_set_attr_f64(buf, percent_eb_storage_used);
+    }
+
     #endif
 }
 
