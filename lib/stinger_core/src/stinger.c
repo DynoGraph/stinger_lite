@@ -1364,6 +1364,7 @@ stinger_update_directed_edge(struct stinger *G,
       if(type == tmp->etype) {
         size_t k, endk;
         endk = tmp->high;
+        curs.eb = readff((uint64_t *)curs.loc); // TODO redundant read with stinger_next_eb
 
         for (k = 0; k < STINGER_EDGEBLOCKSIZE; ++k) {
           int64_t myNeighbor = (tmp->edges[k].neighbor & (~STINGER_EDGE_DIRECTION_MASK));
@@ -1408,7 +1409,7 @@ stinger_update_directed_edge(struct stinger *G,
     /* 3: Needs a new block to be inserted at end of list. */
     eb_index_t old_eb = readfe (curs.loc);
     if (!old_eb) {
-      eb_index_t newBlock = new_eb (G, type, src, old_eb);
+      eb_index_t newBlock = new_eb (G, type, src, curs.eb);
       if (newBlock == 0) {
         writeef (curs.loc, (uint64_t)old_eb);
         return -1;
