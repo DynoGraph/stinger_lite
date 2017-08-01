@@ -71,20 +71,38 @@ emu_blocked_array_new(size_t num_elements, size_t element_size)
     return rtn;
 }
 
+
+static size_t
+div_round_up(size_t num, size_t den)
+{
+    assert(den != 0);
+    return (num + den - 1) / den;
+}
+
+static size_t
+log2_round_up(size_t x)
+{
+    assert(x != 0);
+    if (x == 1) { return 0; }
+    else { return PRIORITY(x - 1) + 1; }
+}
+
 void
 emu_blocked_array_init(struct emu_blocked_array * self, size_t num_elements, size_t element_size)
 {
     assert(!self->data);
+    assert(num_elements > 0);
+
     self->element_size = element_size;
 
     // We will allocate one block on each nodelet
     self->num_blocks = NODELETS();
 
     // How many elements in each block?
-    size_t elements_per_block = num_elements / self->num_blocks;
+    size_t elements_per_block = div_round_up(num_elements, self->num_blocks);
     // Round up to nearest power of two
-    elements_per_block = 1 << (PRIORITY(elements_per_block) + 1);
-    self->log2_elements_per_block = PRIORITY(elements_per_block);
+    self->log2_elements_per_block = log2_round_up(elements_per_block);
+    elements_per_block = 1 << self->log2_elements_per_block;
 
     // Allocate a block on each nodelet
     self->data = xmw_calloc2d(self->num_blocks, elements_per_block * element_size);
@@ -180,10 +198,12 @@ emu_blocked_array_allocate_local(struct emu_blocked_array * self, size_t k, size
 
         // Will this push us past the end of the block?
         size_t last_index = (target_block + 1) * elements_per_block;
+
         if (next_index > last_index) {
             // Move to next block
-            target_block = (target_block + 1) & num_blocks_mask;
+            target_block = (target_block + 1) % self->num_blocks;
             if (target_block != local_block) {
+                block_tail = &self->block_tail[target_block];
                 continue;
             } else {
                 // If we get here, we've tried all the blocks and ended up at the one we started at
