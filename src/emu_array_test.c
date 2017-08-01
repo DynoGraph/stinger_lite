@@ -31,6 +31,20 @@ do {                    \
 #include "emu_array_test.inc"
 #undef EMU_ARRAY
 
+void emu_blocked_array_integrity_test()
+{
+    // Allocate arrays of varying sizes and assert that internal sizes are sane
+    size_t test_sizes[] = {1, 2, 8, 100, 128, 150, 1024};
+
+    for (size_t i = 0; i < sizeof(test_sizes)/sizeof(test_sizes[0]); ++i)
+    {
+        size_t n = test_sizes[i];
+        struct emu_blocked_array array = {0};
+        emu_blocked_array_init(&array, n, sizeof(int));
+        assert(emu_blocked_array_size(&array) >= n);
+    }
+}
+
 
 void emu_blocked_array_allocation_test()
 {
@@ -70,10 +84,14 @@ int main(int argc, char *argv[])
 {
     fprintf(stderr, "Beginning emu_striped_array_test...\n");
     emu_striped_array_test();
+
+    fprintf(stderr, "Beginning emu_blocked_array_integrity_test...\n");
+    emu_blocked_array_integrity_test();
     fprintf(stderr, "Beginning emu_blocked_array_test...\n");
     emu_blocked_array_test();
     fprintf(stderr, "Beginning emu_blocked_array_allocation_test...\n");
     emu_blocked_array_allocation_test();
+
     printf("Done\n");
     return 0;
 }
