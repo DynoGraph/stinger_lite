@@ -39,6 +39,6 @@ void emu_blocked_array_deinit(struct emu_blocked_array * self);
 void emu_blocked_array_free(struct emu_blocked_array * self);
 void * emu_blocked_array_index(struct emu_blocked_array * self, size_t i);
 size_t emu_blocked_array_size();
-size_t emu_blocked_array_allocate_local(struct emu_blocked_array * self, size_t k, size_t local_hint);
+size_t emu_blocked_array_allocate_local(struct emu_blocked_array * self, size_t k, void* locality_hint);
 
 #endif

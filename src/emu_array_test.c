@@ -47,6 +47,12 @@ void emu_blocked_array_integrity_test()
 }
 
 
+static size_t
+view1_nodelet_id(void * ptr)
+{
+    return ((size_t)ptr & __MW_VIEW1_NODE_MASK__) >> __MW_NODE_BITS__;
+}
+
 void emu_blocked_array_allocation_test()
 {
     // Allocate array of ints
@@ -68,14 +74,15 @@ void emu_blocked_array_allocation_test()
     // Ask for one element from each nodelet
     for (size_t i = 0; i < NODELETS(); ++i)
     {
-        size_t hint = i << array.log2_elements_per_block;
+        size_t hint = i << __MW_NODE_BITS__;
         size_t location = emu_blocked_array_allocate_local(&array, 1, hint);
         void * element1 = emu_blocked_array_index(&array, location);
-        ASSERT_EQ(location, hint);
+        ASSERT_EQ(i, view1_nodelet_id(element1));
+
         // The next item allocated should be adjacent on the same nodelet
         location = emu_blocked_array_allocate_local(&array, 1, hint);
         void * element2 = emu_blocked_array_index(&array, location);
-        ASSERT_EQ(location, hint + 1);
+        ASSERT_EQ(i, view1_nodelet_id(element2));
 
         assert(pointers_are_on_same_nodelet(element1, element2));
     }

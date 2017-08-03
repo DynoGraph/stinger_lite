@@ -243,11 +243,11 @@ stinger_etype_names_count(const stinger_t * S) {
 
 
 static void
-get_from_ebpool_local(const struct stinger *S, eb_index_t *out, size_t k, eb_index_t local_to)
+get_from_ebpool_local(const struct stinger *S, eb_index_t *out, size_t k, void* locality_hint)
 {
   MAP_STING(S);
 
-  eb_index_t ebt0 = (eb_index_t)emu_blocked_array_allocate_local(&ebpool->pool, k, local_to);
+  eb_index_t ebt0 = (eb_index_t)emu_blocked_array_allocate_local(&ebpool->pool, k, locality_hint);
 
   stinger_parallel_for (size_t ki = 0; ki < k; ++ki)
     out[ki] = ebt0 + ki;
@@ -784,7 +784,7 @@ stinger_ebpool_init(struct stinger_ebpool * ebpool, int64_t nebs)
 #if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
   emu_blocked_array_init(&ebpool->pool, nebs, sizeof(struct stinger_eb));
   // Pop element zero, since index 0 is reserved as null pointer
-  emu_blocked_array_allocate_local(&ebpool->pool, 1, 0);
+  emu_blocked_array_allocate_local(&ebpool->pool, 1, NULL);
 #endif
   ebpool->ebpool_tail = 1;
   ebpool->is_shared = 0;
@@ -1095,7 +1095,7 @@ stinger_free_all (struct stinger *S)
 
 /* TODO inspect possibly move out with other EB POOL stuff */
 
-eb_index_t new_eb (struct stinger * S, int64_t etype, int64_t from, int64_t locality_hint)
+eb_index_t new_eb (struct stinger * S, int64_t etype, int64_t from, void* locality_hint)
 {
   MAP_STING(S);
   size_t k;
@@ -1314,6 +1314,7 @@ stinger_update_directed_edge(struct stinger *G,
 
   struct curs curs;
   struct stinger_eb *tmp;
+  struct stinger_eb *last_eb_seen = NULL;
 
   int64_t dest;
   int64_t src;
@@ -1364,7 +1365,7 @@ stinger_update_directed_edge(struct stinger *G,
       if(type == tmp->etype) {
         size_t k, endk;
         endk = tmp->high;
-        curs.eb = readff((uint64_t *)curs.loc); // TODO redundant read with stinger_next_eb
+        last_eb_seen = tmp;
 
         for (k = 0; k < STINGER_EDGEBLOCKSIZE; ++k) {
           int64_t myNeighbor = (tmp->edges[k].neighbor & (~STINGER_EDGE_DIRECTION_MASK));
@@ -1409,7 +1410,17 @@ stinger_update_directed_edge(struct stinger *G,
     /* 3: Needs a new block to be inserted at end of list. */
     eb_index_t old_eb = readfe (curs.loc);
     if (!old_eb) {
-      eb_index_t newBlock = new_eb (G, type, src, curs.eb);
+      void * locality_hint;
+      if (last_eb_seen != NULL)
+      {
+        // Allocate new block near the last block
+        locality_hint = last_eb_seen;
+      } else {
+        // Put the new block near the source vertex
+        locality_hint = stinger_vertices_vertex_get(vertices, src);
+      }
+      // Grab a new block from the pool
+      eb_index_t newBlock = new_eb (G, type, src, locality_hint);
       if (newBlock == 0) {
         writeef (curs.loc, (uint64_t)old_eb);
         return -1;

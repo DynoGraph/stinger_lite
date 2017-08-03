@@ -169,18 +169,23 @@ emu_blocked_array_size(struct emu_blocked_array * self)
     return (1 << self->log2_elements_per_block) * self->num_blocks;
 }
 
+static size_t
+view1_nodelet_id(void * ptr)
+{
+    return ((size_t)ptr & __MW_VIEW1_NODE_MASK__) >> __MW_NODE_BITS__;
+}
 
 /*
 Reserves <k> contiguous elements from the blocked array <self>.
 Returns the index of the first element.
-Tries to get elements from the same block as the index <local_hint>.
+Tries to get elements from the same block as the pointer <locality_hint>.
 */
 size_t
-emu_blocked_array_allocate_local(struct emu_blocked_array * self, size_t k, size_t local_hint)
+emu_blocked_array_allocate_local(struct emu_blocked_array * self, size_t k, void * locality_hint)
 {
     assert(self->data);
     // Calculate local block
-    size_t local_block = local_hint >> self->log2_elements_per_block;
+    size_t local_block = view1_nodelet_id(locality_hint);
     size_t elements_per_block = 1 << self->log2_elements_per_block;
     size_t num_blocks_mask = self->num_blocks - 1;
 
