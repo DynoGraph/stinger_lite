@@ -108,6 +108,57 @@ insert_batch(struct stinger *S, struct dynograph_edge_batch batch)
     }
 }
 
+void
+do_remote_insert(void* hint, struct stinger *S, struct dynograph_edge e)
+{
+    (void)hint; // Unused, just a hint to make us migrate to the right nodelet
+    const int64_t type = 0;
+    const bool directed = true;
+    if (directed)
+    {
+        stinger_incr_edge     (S, type, e.src, e.dst, e.weight, e.timestamp);
+    } else { // undirected
+        stinger_incr_edge_pair(S, type, e.src, e.dst, e.weight, e.timestamp);
+    }
+}
+
+
+// Chop off half of batch <a> and give to batch <b>
+void split_batch(struct dynograph_edge_batch *a, struct dynograph_edge_batch* b)
+{
+    assert(a != NULL && b != NULL);
+    // Give half the edges to batch b
+    b->num_edges = a->num_edges / 2;
+    // Take them away from batch a
+    a->num_edges -= b->num_edges;
+    // Set b's pointer
+    b->edges = a->edges + a->num_edges;
+}
+
+void
+insert_batch_with_remote_spawn(struct stinger *S, struct dynograph_edge_batch batch)
+{
+    if (batch.num_edges > 1)
+    {
+        // Recursively split batch in half and spawn thread to handle other half
+        struct dynograph_edge_batch other_batch;
+        split_batch(&batch, &other_batch);
+        if (other_batch.num_edges > 0) {
+            insert_batch_with_remote_spawn(S, other_batch);
+        }
+        insert_batch_with_remote_spawn(S, batch);
+
+    } else if (batch.num_edges == 1) {
+        // Base case: do the work with one edge
+        struct dynograph_edge *edge = batch.edges;
+        void * hint = stinger_vertices_vertex_get(&S->vertices, edge->src);
+        do_remote_insert(hint, S, *edge);
+    } else {
+        assert(batch.num_edges != 0);
+    }
+}
+
+
 void record_graph_size(struct stinger *S)
 {
     int64_t max_active_nv = stinger_max_active_vertex(S);
@@ -410,7 +461,7 @@ int main(int argc, char *argv[])
 
             dynograph_message("Inserting batch %lli", batch_id);
             hooks_region_begin("insertions");
-            insert_batch(S, batch);
+            insert_batch_with_remote_spawn(S, batch);
             hooks_region_end();
 
             record_graph_distribution(S);
