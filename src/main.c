@@ -144,7 +144,7 @@ insert_batch_with_remote_spawn(struct stinger *S, struct dynograph_edge_batch ba
         struct dynograph_edge_batch other_batch;
         split_batch(&batch, &other_batch);
         if (other_batch.num_edges > 0) {
-            insert_batch_with_remote_spawn(S, other_batch);
+            cilk_spawn insert_batch_with_remote_spawn(S, other_batch);
         }
         insert_batch_with_remote_spawn(S, batch);
 
