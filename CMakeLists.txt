@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.11)
-set(CMAKE_USER_MAKE_RULES_OVERRIDE "cmake/emu-rules.cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 project(stinger_lite C)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
