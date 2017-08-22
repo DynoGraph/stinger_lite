@@ -54,6 +54,8 @@ generate_stinger_config(int64_t nv) {
     // Finally, calculate how much room is left for the edge blocks themselves
     int64_t nebs = sz / (sizeof(struct stinger_eb) + sizeof(eb_index_t));
 
+    nebs = 16 * 1024;
+
     struct stinger_config_t config = {
             nv,
             nebs,
