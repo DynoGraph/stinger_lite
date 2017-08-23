@@ -21,7 +21,13 @@ extern "C" {
   stinger_names_t * etype_names = (stinger_names_t *)((X)->storage + (X)->etype_names_start); \
   stinger_names_t * vtype_names = (stinger_names_t *)((X)->storage + (X)->vtype_names_start); \
   uint8_t * _ETA = ((X)->storage + (X)->ETA_start); \
-  struct stinger_ebpool * ebpool = (struct stinger_ebpool *)((X)->storage + (X)->ebpool_start);
+  struct stinger_ebpool * ebpool = (struct stinger_ebpool *)((X)->storage + (X)->ebpool_start); \
+  (void) vertices; \
+  (void) physmap; \
+  (void) etype_names; \
+  (void) vtype_names; \
+  (void) _ETA; \
+  (void) ebpool;
 
 #define CONST_MAP_STING(X) \
   const stinger_vertices_t * vertices = (const stinger_vertices_t *)((X)->storage); \
@@ -29,7 +35,13 @@ extern "C" {
   const stinger_names_t * etype_names = (const stinger_names_t *)((X)->storage + (X)->etype_names_start); \
   const stinger_names_t * vtype_names = (const stinger_names_t *)((X)->storage + (X)->vtype_names_start); \
   const uint8_t * _ETA = ((X)->storage + (X)->ETA_start); \
-  const struct stinger_ebpool * ebpool = (const struct stinger_ebpool *)((X)->storage + (X)->ebpool_start);
+  const struct stinger_ebpool * ebpool = (const struct stinger_ebpool *)((X)->storage + (X)->ebpool_start); \
+  (void) vertices; \
+  (void) physmap; \
+  (void) etype_names; \
+  (void) vtype_names; \
+  (void) _ETA; \
+  (void) ebpool;
 
 #define ETA(X,Y) ((struct stinger_etype_array *)(_ETA + ((Y)*stinger_etype_array_size((X)->max_neblocks))))
 
@@ -41,7 +53,12 @@ extern "C" {
   stinger_names_t * etype_names = &(X)->etype_names; \
   stinger_names_t * vtype_names = &(X)->vtype_names; \
   struct stinger_etype_array ** _eta_list = &(X)->eta_list; \
-  struct stinger_ebpool * ebpool = &(X)->ebpool;
+  struct stinger_ebpool * ebpool = &(X)->ebpool; \
+  (void) vertices; \
+  (void) physmap; \
+  (void) etype_names; \
+  (void) vtype_names; \
+  (void) ebpool;
 
 #define CONST_MAP_STING(X) \
   const stinger_vertices_t * vertices = &(X)->vertices; \
@@ -49,7 +66,12 @@ extern "C" {
   const stinger_names_t * etype_names = &(X)->etype_names; \
   const stinger_names_t * vtype_names = &(X)->vtype_names; \
   const struct stinger_etype_array * const * _eta_list = &(X)->eta_list; \
-  const struct stinger_ebpool * ebpool = &(X)->ebpool;
+  const struct stinger_ebpool * ebpool = &(X)->ebpool; \
+  (void) vertices; \
+  (void) physmap; \
+  (void) etype_names; \
+  (void) vtype_names; \
+  (void) ebpool;
 
 #define ETA(X,Y) (_eta_list[Y])
 

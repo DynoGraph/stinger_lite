@@ -130,6 +130,8 @@ extern "C" {
     ){                                                                                                    \
       int64_t source__ = current_eb__->vertexID;                                                          \
       int64_t type__ = current_eb__->etype;                                                               \
+      (void) source__;                                                                                    \
+      (void) type__;                                                                                      \
       EB_FILTER_ {                                                                                        \
         PARALLEL_FOR_(uint64_t i__ = 0; i__ < stinger_eb_high(current_eb__); i__++) {                     \
           if(!stinger_eb_is_blank(current_eb__, i__)) {                                                   \
@@ -226,6 +228,8 @@ extern "C" {
         struct stinger_eb *  current_eb__ = stinger_ebpool_get_eb(STINGER_, ETA((STINGER_),(t__))->blocks[p__]); \
         int64_t source__ = current_eb__->vertexID;                                            \
         int64_t type__ = current_eb__->etype;                                                 \
+        (void) source__;                                                                      \
+        (void) type__;                                                                        \
         for(uint64_t i__ = 0; i__ < stinger_eb_high(current_eb__); i__++) {                   \
           if(!stinger_eb_is_blank(current_eb__, i__)) {                                       \
             struct stinger_edge * current_edge__ = current_eb__->edges + i__;                 \
@@ -430,6 +434,8 @@ extern "C" {
           eb__ = stinger_ebpool_get_eb(STINGER_, ebp_k__); \
           const int64_t source__ = eb__->vertexID;             \
           const int64_t type__ = eb__->etype;                  \
+          (void) source__;                                     \
+          (void) type__;                                       \
           for(uint64_t i__ = 0; i__ < eb__->high; i__++) {     \
             if(!stinger_eb_is_blank(eb__, i__)) {            \
               const struct stinger_edge local_current_edge__ = eb__->edges[i__]; \
@@ -453,6 +459,8 @@ extern "C" {
           const struct stinger_eb * restrict eb__ = stinger_ebpool_get_eb(STINGER_, ebp_k__); \
           const int64_t source__ = eb__->vertexID;         \
           const int64_t type__ = eb__->etype;              \
+          (void) source__;                                 \
+          (void) type__;                                   \
           for(uint64_t i__ = 0; i__ < eb__->high; i__++) { \
             if(!stinger_eb_is_blank(eb__, i__)) {      \
               const struct stinger_edge local_current_edge__ = eb__->edges[i__]; \
