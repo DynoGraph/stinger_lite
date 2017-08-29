@@ -9,9 +9,7 @@ set(sources
 	src/stinger_shared.c
 	src/stinger_vertex.c
 	src/xmalloc.c
-	src/emu_xmalloc.c
 	src/x86_full_empty.c
-	src/emu_array.c
 )
 set(headers
 	inc/core_util.h
@@ -27,8 +25,6 @@ set(headers
 	inc/stinger_vertex.h
 	inc/x86_full_empty.h
 	inc/xmalloc.h
-	inc/emu_xmalloc.h
-	inc/emu_array.h
 	# Only file that requires C++
 	#inc/stinger_batch_insert.h
 )
@@ -37,6 +33,17 @@ set(config
 	${CMAKE_BINARY_DIR}/include/stinger_names.h
 	${CMAKE_BINARY_DIR}/include/stinger_defs.h
 )
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Emu1")
+	list(APPEND headers
+		inc/emu_xmalloc.h
+		inc/emu_array.h
+	)
+	list(APPEND sources
+		src/emu_xmalloc.c
+		src/emu_array.c
+	)
+endif()
 
 publish_headers(headers "${CMAKE_BINARY_DIR}/include/stinger_core")
 

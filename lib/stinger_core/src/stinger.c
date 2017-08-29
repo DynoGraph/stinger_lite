@@ -12,8 +12,10 @@
 #include "stinger_atomics.h"
 #include "core_util.h"
 #include "xmalloc.h"
+#if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
 #include "emu_xmalloc.h"
 #include "emu_array.h"
+#endif
 #include "x86_full_empty.h"
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ *
@@ -241,7 +243,7 @@ stinger_etype_names_count(const stinger_t * S) {
 /* {{{ Edge block pool */
 /* TODO XXX Rework / possibly move EB POOL functions */
 
-
+#if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
 static void
 get_from_ebpool_local(const struct stinger *S, eb_index_t *out, size_t k, void* locality_hint)
 {
@@ -253,7 +255,8 @@ get_from_ebpool_local(const struct stinger *S, eb_index_t *out, size_t k, void* 
     out[ki] = ebt0 + ki;
 
 }
- 
+#endif
+
 static void
 get_from_ebpool (const struct stinger * S, eb_index_t *out, size_t k)
 {
@@ -1100,7 +1103,11 @@ eb_index_t new_eb (struct stinger * S, int64_t etype, int64_t from, void* locali
   MAP_STING(S);
   size_t k;
   eb_index_t out = 0;
+#if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
+  get_from_ebpool (S, &out, 1);
+#elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
   get_from_ebpool_local (S, &out, 1, locality_hint);
+#endif
   struct stinger_eb * block = stinger_ebpool_get_eb(S, out);
   assert (block != NULL);
   xzero (block, sizeof (*block));

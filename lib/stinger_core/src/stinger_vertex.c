@@ -2,8 +2,9 @@
 #include "stinger_atomics.h"
 #include "x86_full_empty.h"
 #include "xmalloc.h"
+#if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
 #include "emu_xmalloc.h"
-
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 

@@ -5,4 +5,6 @@ link_libraries(stinger_core stinger_alg dynograph_util)
 add_executable(dynograph main.c layout.c)
 
 # Tests
+if (CMAKE_SYSTEM_NAME STREQUAL "Emu1")
 add_executable(emu_array_test emu_array_test.c layout.c)
+endif()

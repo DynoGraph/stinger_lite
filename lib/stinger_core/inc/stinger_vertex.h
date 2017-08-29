@@ -10,7 +10,9 @@ extern "C" {
 #include <stdio.h>
 
 #include "stinger_names.h"
+#if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
 #include "emu_array.h"
+#endif
 
 typedef int64_t adjacency_t;
 

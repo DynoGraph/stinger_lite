@@ -9,8 +9,9 @@
 #include <stinger_alg/kcore.h>
 #include <stinger_alg/pagerank.h>
 
+#if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
 #include <stinger_core/emu_xmalloc.h>
-
+#endif
 #include <dynograph_util.h>
 #include <hooks_c.h>
 
@@ -140,6 +141,7 @@ void split_batch(struct dynograph_edge_batch *a, struct dynograph_edge_batch* b)
 void
 insert_batch_with_remote_spawn(struct stinger *S, struct dynograph_edge_batch batch)
 {
+    MAP_STING(S);
     if (batch.num_edges > 1)
     {
         // Recursively split batch in half and spawn thread to handle other half
@@ -153,7 +155,7 @@ insert_batch_with_remote_spawn(struct stinger *S, struct dynograph_edge_batch ba
     } else if (batch.num_edges == 1) {
         // Base case: do the work with one edge
         struct dynograph_edge *edge = batch.edges;
-        void * hint = stinger_vertices_vertex_get(&S->vertices, edge->src);
+        void * hint = stinger_vertices_vertex_get(vertices, edge->src);
         do_remote_insert(hint, S, *edge);
     } else {
         assert(batch.num_edges != 0);
@@ -436,8 +438,11 @@ int main(int argc, char *argv[])
         // Allocate data structures for the algorithm(s)
         void *alg_data = NULL;
         if (alg != NULL) {
-            //void *alg_data = xcalloc(sizeof(int64_t) * alg->data_per_vertex, nv);
-            alg_data = xmw_malloc1d(alg->data_per_vertex * nv);
+            #if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
+               alg_data = xcalloc(sizeof(int64_t) * alg->data_per_vertex, nv);
+            #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+               alg_data = xmw_malloc1d(alg->data_per_vertex * nv);
+            #endif
         }
 
         // Run the algorithm(s) after each inserted batch

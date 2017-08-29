@@ -6,7 +6,9 @@
 extern "C" {
 #endif
 
+#if defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
 #include "emu_array.h"
+#endif
 
 #define STINGER_EDGE_DIRECTION_MASK (0x6000000000000000L)
 #define STINGER_EDGE_DIRECTION_OUT (0x4000000000000000L)
