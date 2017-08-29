@@ -388,6 +388,83 @@ void run_alg(stinger_t * S, const char *alg_name, int64_t num_vertices, void *al
     }
 }
 
+#define OPTIMIZATION_FLAGS_MAX_NUM 32
+#define OPTIMIZATION_FLAGS_BUF_LEN 256
+static struct optimization_flag {
+    char key [OPTIMIZATION_FLAGS_BUF_LEN];
+    char value [OPTIMIZATION_FLAGS_BUF_LEN];
+} optimization_flags[OPTIMIZATION_FLAGS_MAX_NUM];
+
+bool optimization_flag_test(const char* key, const char* value)
+{
+    for (size_t i = 0; i < OPTIMIZATION_FLAGS_MAX_NUM; ++i)
+    {
+        const struct optimization_flag *entry = &optimization_flags[i];
+        // Search for matching key
+        if (!strcmp(key, entry->key))
+        {
+            // Return matching value
+            return !strcmp(value, entry->value);
+        }
+    }
+    // Return false if key not present
+    return false;
+}
+
+void optimization_flag_set(const char* key, const char* value)
+{
+    for (size_t i = 0; i < OPTIMIZATION_FLAGS_MAX_NUM; ++i)
+    {
+        struct optimization_flag *entry = &optimization_flags[i];
+        // Search for empty row or matching key
+        if (entry->key == NULL || !strcmp(key, entry->key)) {
+            // Overwrite value, being careful with max length
+            strncpy(entry->value, value, OPTIMIZATION_FLAGS_BUF_LEN-1);
+            entry->value[OPTIMIZATION_FLAGS_BUF_LEN-1] = '\0';
+            return;
+        }
+    }
+    // Couldn't find an available entry
+    assert(false && "Ran out of room in optimization_flags table. Try increasing OPTIMIZATION_FLAGS_MAX_NUM");
+}
+
+extern char ** environ;
+
+void optimization_flags_init_from_environment()
+{
+    const size_t MAX_STR_LEN = OPTIMIZATION_FLAGS_BUF_LEN - 1;
+    size_t row = 0;
+    for (char** p = environ; *p != NULL; ++p)
+    {
+        // Find the split between key and value
+        char* equals_pos = strstr(*p, "=");
+        size_t key_len = equals_pos - *p;
+        // Test to see if the key starts with "OPTIMIZATION_"
+        const char * prefix = "OPTIMIZATION_";
+        size_t prefix_len = strlen(prefix);
+        if (key_len > prefix_len && !strncmp(*p, prefix, prefix_len))
+        {
+            struct optimization_flag *entry = &optimization_flags[row];
+
+            // Copy the key into our table (omitting the prefix) and add null terminator
+            if (key_len > MAX_STR_LEN) { key_len = MAX_STR_LEN; }
+            strncpy(entry->key, *p + prefix_len, key_len - prefix_len);
+            entry->key[MAX_STR_LEN] = '\0';
+            // Copy the value into our table and add null terminator
+            size_t value_len = strlen(equals_pos+1);
+            if (value_len > MAX_STR_LEN) { value_len = MAX_STR_LEN; }
+            strncpy(entry->value, equals_pos+1, value_len);
+            entry->value[MAX_STR_LEN] = '\0';
+
+            printf("Loaded optimization_flag: %s = %s\n", entry->key, entry->value);
+
+            // Move to the next row
+            ++row;
+            assert(row < OPTIMIZATION_FLAGS_MAX_NUM && "Ran out of room in optimization_flags table. Try increasing OPTIMIZATION_FLAGS_MAX_NUM");
+        }
+    }
+}
+
 
 replicated struct stinger local_S;
 
@@ -396,6 +473,7 @@ int main(int argc, char *argv[])
     struct dynograph_args args = {0};
     dynograph_args_parse(argc, argv, &args);
 
+    optimization_flags_init_from_environment();
     hooks_set_active_region(getenv("HOOKS_ACTIVE_REGION"));
 
     dynograph_message("Loading dataset...");
@@ -470,7 +548,15 @@ int main(int argc, char *argv[])
 
             dynograph_message("Inserting batch %lli", batch_id);
             hooks_region_begin("insertions");
-            insert_batch_with_remote_spawn(S, batch);
+
+            if (optimization_flag_test("INSERT_MODE", "REMOTE_SPAWN"))
+            {
+                dynograph_message("Using REMOTE_SPAWN algorithm");
+                insert_batch_with_remote_spawn(S, batch);
+            } else {
+                dynograph_message("Using default algorithm");
+                insert_batch(S, batch);
+            }
             hooks_region_end();
 
             record_graph_distribution(S);
