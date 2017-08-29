@@ -394,6 +394,8 @@ int main(int argc, char *argv[])
     struct dynograph_args args = {0};
     dynograph_args_parse(argc, argv, &args);
 
+    hooks_set_active_region(getenv("HOOKS_ACTIVE_REGION"));
+
     dynograph_message("Loading dataset...");
     struct dynograph_dataset* dataset = dynograph_load_dataset(&args);
     // Look up the algorithm that will be benchmarked
