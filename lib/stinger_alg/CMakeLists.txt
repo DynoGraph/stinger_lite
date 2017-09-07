@@ -47,6 +47,11 @@ set(headers
   inc/modularity.h
 )
 
+if (CMAKE_SYSTEM_NAME STREQUAL "Emu1")
+    list(REMOVE_ITEM sources src/pagerank.c)
+    list(APPEND sources src/emu_pagerank.c)
+endif()
+
 publish_headers(headers "${CMAKE_BINARY_DIR}/include/stinger_alg")
 
 include_directories("${CMAKE_BINARY_DIR}/include/stinger_alg")
