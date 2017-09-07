@@ -80,6 +80,28 @@ static void calculate_pagerank(size_t begin, size_t end, size_t grain, stinger_t
 }
 
 
+static void calculate_delta_worker(size_t begin, size_t end, stinger_t * S, double * pr, double * tmp_pr, double * delta)
+{
+  double delta_local = 0;
+  for (uint64_t v = begin; v < end; v++) {
+    double mydelta = tmp_pr[v] - pr[v];
+    if (mydelta < 0)
+      mydelta = -mydelta;
+    delta_local += mydelta;
+  }
+  // Perform partial reduction
+  // Can't use an atomic or remote here because delta is a double
+  delta_local += readfe((uint64_t*)&delta);
+  writeef((uint64_t*)&delta, delta_local);
+}
+
+static void calculate_delta(size_t begin, size_t end, size_t grain, stinger_t * S, double * pr, double * tmp_pr, double * delta)
+{
+  RECURSIVE_CILK_SPAWN(begin, end, grain,
+     calculate_delta, S, pr, tmp_pr, delta);
+}
+
+
 // NOTE: This only works on Undirected Graphs!
 int64_t
 page_rank (stinger_t * S, int64_t NV, double * pr, double * tmp_pr_in, double epsilon, double dampingfactor, int64_t maxiter)
@@ -106,13 +128,9 @@ page_rank (stinger_t * S, int64_t NV, double * pr, double * tmp_pr_in, double ep
 
     // calculate_delta
     delta = 0;
-    OMP("omp parallel for reduction(+:delta)")
-    for (uint64_t v = 0; v < NV; v++) {
-      double mydelta = tmp_pr[v] - pr[v];
-      if (mydelta < 0)
-        mydelta = -mydelta;
-      delta += mydelta;
-    }
+    calculate_delta(0, NV, 32,
+      S, pr, tmp_pr, &delta);
+
     //LOG_I_A("delta : %20.15e", delta);
 
     // double_buffer
