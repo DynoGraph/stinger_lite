@@ -8,6 +8,7 @@ inline double * set_tmp_pr(double * tmp_pr_in, int64_t NV) {
   if (tmp_pr_in) {
     tmp_pr = tmp_pr_in;
   } else {
+    // TODO replace with malloc1dlong
     tmp_pr = (double *)xmalloc(sizeof(double) * NV);
   }
   return tmp_pr;
@@ -47,15 +48,14 @@ page_rank (stinger_t * S, int64_t NV, double * pr, double * tmp_pr_in, double ep
       } else {
         STINGER_FORALL_IN_EDGES_OF_VTX_BEGIN(S, v) {
           int64_t outdegree = stinger_outdegree (S, STINGER_EDGE_DEST);
-          tmp_pr[v] += (((double) pr[STINGER_EDGE_DEST]) /
-            ((double) (outdegree ? outdegree : NV-1)));
+          tmp_pr[v] += pr[STINGER_EDGE_DEST] / (outdegree ? outdegree : NV-1);
         } STINGER_FORALL_IN_EDGES_OF_VTX_END();
       }
     }
 
     OMP("omp parallel for")
     for (uint64_t v = 0; v < NV; v++) {
-      tmp_pr[v] = (tmp_pr[v] + pr_constant / (double)NV) * dampingfactor + (((double)(1-dampingfactor)) / ((double)NV));
+      tmp_pr[v] = (tmp_pr[v] + pr_constant / NV) * dampingfactor + ((1-dampingfactor) / NV);
     }
 
     delta = 0;
