@@ -2,6 +2,7 @@
 
 #include "pagerank.h"
 #include "stinger_core/x86_full_empty.h"
+#include "stinger_core/emu_xmalloc.h"
 
 inline double * set_tmp_pr(double * tmp_pr_in, int64_t NV) {
   double * tmp_pr = NULL;
@@ -9,14 +10,14 @@ inline double * set_tmp_pr(double * tmp_pr_in, int64_t NV) {
     tmp_pr = tmp_pr_in;
   } else {
     // TODO replace with malloc1dlong
-    tmp_pr = (double *)xmalloc(sizeof(double) * NV);
+    tmp_pr = (double *)xmw_malloc1d(NV);
   }
   return tmp_pr;
 }
 
 inline void unset_tmp_pr(double * tmp_pr, double * tmp_pr_in) {
   if (!tmp_pr_in)
-    free(tmp_pr);
+    mw_free(tmp_pr);
 }
 
 int64_t
@@ -121,8 +122,7 @@ page_rank (stinger_t * S, int64_t NV, double * pr, double * tmp_pr_in, double ep
       S, NV, pr, tmp_pr, &pr_constant);
 
     // normalize
-    OMP("omp parallel for")
-    for (uint64_t v = 0; v < NV; v++) {
+    stinger_parallel_for (uint64_t v = 0; v < NV; v++) {
       tmp_pr[v] = (tmp_pr[v] + pr_constant / NV) * dampingfactor + ((1-dampingfactor) / NV);
     }
 
@@ -134,8 +134,7 @@ page_rank (stinger_t * S, int64_t NV, double * pr, double * tmp_pr_in, double ep
     //LOG_I_A("delta : %20.15e", delta);
 
     // double_buffer
-    OMP("omp parallel for")
-    for (uint64_t v = 0; v < NV; v++) {
+    stinger_parallel_for (uint64_t v = 0; v < NV; v++) {
       pr[v] = tmp_pr[v];
     }
 
