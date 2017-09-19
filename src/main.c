@@ -91,6 +91,25 @@ delete_edges_older_than(struct stinger *S, int64_t threshold)
 }
 
 void
+insert_batch_serial(struct stinger *S, struct dynograph_edge_batch batch)
+{
+    const int64_t type = 0;
+    const bool directed = batch.directed;
+
+    for (int64_t i = 0; i < batch.num_edges; ++i)
+    {
+        const struct dynograph_edge *e = &batch.edges[i];
+        if (directed)
+        {
+            stinger_incr_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
+        } else { // undirected
+            stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
+        }
+        hooks_traverse_edges(1);
+    }
+}
+
+void
 insert_batch(struct stinger *S, struct dynograph_edge_batch batch)
 {
     // Insert the edges in parallel
@@ -552,6 +571,9 @@ int main(int argc, char *argv[])
             if (optimization_flag_test("INSERT_MODE", "REMOTE_SPAWN"))
             {
                 dynograph_message("Using REMOTE_SPAWN algorithm");
+                insert_batch_with_remote_spawn(S, batch);
+            } else if (optimization_flag_test("INSERT_MODE", "SERIAL")) {
+                dynograph_message("Using SERIAL algorithm");
                 insert_batch_with_remote_spawn(S, batch);
             } else {
                 dynograph_message("Using default algorithm");
