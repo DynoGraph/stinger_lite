@@ -42,7 +42,7 @@ do {                                                                \
         int64_t mid = low + count / 2;                              \
                                                                     \
         /* Spawn a thread to deal with the lower half */            \
-        cilk_spawn FUNC(low, mid, GRAIN, __VA_ARGS__);              \
+        FUNC(low, mid, GRAIN, __VA_ARGS__);              \
                                                                     \
         low = mid;                                                  \
     }                                                               \
