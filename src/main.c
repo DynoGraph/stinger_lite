@@ -24,49 +24,9 @@
 // Basically implements calculate_stinger_size() in reverse
 struct stinger_config_t
 generate_stinger_config(int64_t nv) {
-
-    // Start with size we will try to fill
-    // Scaled by 75% because that's what stinger_new_full does
-    // HACK scaling by 25% just so we don't bump into any memory limits
-    size_t sz = ((uint64_t)stinger_max_memsize() * 1)/(4*NODELETS());
-    dynograph_message("Actual memory size: %lu x %lu MB", NODELETS(), BYTES_PER_NODELET() >> 20);
-    dynograph_message("Detected memory size as %lu MB", stinger_max_memsize() >> 20, sz);
-
-    // Subtract storage for vertices
-    sz -= stinger_vertices_size(nv);
-    sz -= stinger_physmap_size(nv);
-
-    // Assume just one etype and vtype
-    int64_t netypes = 1;
-    int64_t nvtypes = 1;
-    sz -= stinger_names_size(netypes);
-    sz -= stinger_names_size(nvtypes);
-
-    // Leave room for the edge block tracking structures
-    sz -= sizeof(struct stinger_ebpool);
-    sz -= sizeof(struct stinger_etype_array);
-
-    // Finally, calculate how much room is left for the edge blocks themselves
-    int64_t nebs = sz / (sizeof(struct stinger_eb) + sizeof(eb_index_t));
-
-    nebs = 16 * 1024;
-
-    struct stinger_config_t config = {
-            nv,
-            nebs,
-            netypes,
-            nvtypes,
-            0, //size_t memory_size;
-            0, //uint8_t no_map_none_etype;
-            0, //uint8_t no_map_none_vtype;
-            1, //uint8_t no_resize;
-    };
-
-    dynograph_message("Configuring stinger storage for %lu vertices and %lu edges",
-        config.nv, config.nebs * STINGER_EDGEBLOCKSIZE);
     dynograph_message("Stinger will consume %lu MB of RAM",
-        calculate_stinger_size(nv, nebs, netypes, nvtypes).size >> 20);
-
+        calculate_stinger_size(0, 0, 0, 0).size >> 20);
+    struct stinger_config_t config;
     return config;
 }
 
