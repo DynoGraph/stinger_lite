@@ -30,6 +30,7 @@ generate_stinger_config() {
 void
 insert_batch(struct stinger *S, struct dynograph_edge_batch batch)
 {
+    printf("num_edges = %lli, directed = %lli, edges = %x\n", batch.num_edges, batch.directed, batch.edges);
     stinger_parallel_for (int64_t i = 0; i < batch.num_edges; ++i)
     {
     }
@@ -58,6 +59,7 @@ int main(int argc, char *argv[])
 
     int64_t batch_id = 0;
     struct dynograph_edge_batch batch = dynograph_get_batch(dataset, batch_id);
+    printf("num_edges = %lli, directed = %lli, edges = %x\n", batch.num_edges, batch.directed, batch.edges);
     dynograph_message("Inserting batch %lli", batch_id);
 
     insert_batch(NULL, batch);
