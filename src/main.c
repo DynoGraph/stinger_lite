@@ -301,7 +301,7 @@ get_alg(const char *name)
     if (b == NULL)
     {
         dynograph_message("Alg '%s' not implemented!", name);
-        dynograph_die();
+        //dynograph_die();
     }
     return b;
 }
