@@ -116,7 +116,7 @@ insert_batch(struct stinger *S, struct dynograph_edge_batch batch)
     const int64_t type = 0;
     const bool directed = batch.directed;
 
-    #pragma cilk grainsize = 1
+    // #pragma cilk grainsize = 1
     stinger_parallel_for (int64_t i = 0; i < batch.num_edges; ++i)
     {
     }
@@ -492,119 +492,62 @@ int main(int argc, char *argv[])
     // Look up the algorithm that will be benchmarked
     struct alg *alg = get_alg(args.alg_names);
 
-    for (int64_t trial = 0; trial < args.num_trials; trial++)
+    int64_t nv = dataset->max_vertex_id + 1;
+    struct stinger_config_t config = generate_stinger_config(nv);
+
+    dynograph_message("Initializing stinger...");
+    struct stinger *S = stinger_new_full(&config);
+
+    #if defined(__le64__)
+    dynograph_message("Replicating stinger struct...");
+    /*
+        The stinger struct contains the pointers to each distributed data structure.
+        All threads will need to access it, and it won't change after allocation.
+        So we replicate it to each nodelet to avoid unnecessary migrations
+    */
+    // For each nodelet...
+    for (size_t i = 0; i < NODELETS(); ++i)
     {
-        hooks_set_attr_i64("trial", trial);
+        // Get a pointer to the storage reserved for the local copy of the stinger struct
+        struct stinger *local_ptr = mw_get_nth(&local_S, i);
+        // Fill it with valid pointers
+        memcpy(local_ptr, S, sizeof(struct stinger));
+    }
+    // Keep track of the original allocation so we can free it
+    struct stinger *alloced_S = S;
+    // From now on always use the local copy of S
+    S = &local_S;
+    #endif
 
-        int64_t nv = dataset->max_vertex_id + 1;
-        struct stinger_config_t config = generate_stinger_config(nv);
-
-        dynograph_message("Initializing stinger...");
-        struct stinger *S = stinger_new_full(&config);
-
-        #if defined(__le64__)
-        dynograph_message("Replicating stinger struct...");
-        /*
-            The stinger struct contains the pointers to each distributed data structure.
-            All threads will need to access it, and it won't change after allocation.
-            So we replicate it to each nodelet to avoid unnecessary migrations
-        */
-        // For each nodelet...
-        for (size_t i = 0; i < NODELETS(); ++i)
-        {
-            // Get a pointer to the storage reserved for the local copy of the stinger struct
-            struct stinger *local_ptr = mw_get_nth(&local_S, i);
-            // Fill it with valid pointers
-            memcpy(local_ptr, S, sizeof(struct stinger));
-        }
-        // Keep track of the original allocation so we can free it
-        struct stinger *alloced_S = S;
-        // From now on always use the local copy of S
-        S = &local_S;
-        #endif
-
-        dynograph_message("Allocating alg data...");
-        // Allocate data structures for the algorithm(s)
-        void *alg_data = NULL;
-        if (alg != NULL) {
-            #if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
-               alg_data = xcalloc(sizeof(int64_t) * alg->data_per_vertex, nv);
-            #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
-               alg_data = xmw_malloc1d(alg->data_per_vertex * nv);
-            #endif
-        }
-
-        // Run the algorithm(s) after each inserted batch
-        int64_t epoch = 0;
-        for (int64_t batch_id = 0; batch_id < dataset->num_batches; ++batch_id)
-        {
-            hooks_set_attr_i64("batch", batch_id);
-            hooks_set_attr_i64("epoch", epoch);
-
-            struct dynograph_edge_batch batch = dynograph_get_batch(dataset, batch_id);
-
-            int64_t threshold = dynograph_get_timestamp_for_window(dataset, &batch);
-
-            if (args.window_size != 1.0 && args.sort_mode != SNAPSHOT)
-            {
-                record_graph_size(S);
-
-                dynograph_message("Deleting edges older than %lli", threshold);
-                hooks_region_begin("deletions");
-                delete_edges_older_than(S, threshold);
-                hooks_region_end();
-            }
-
-            record_graph_size(S);
-
-            dynograph_message("Inserting batch %lli", batch_id);
-            hooks_region_begin("insertions");
-
-            if (optimization_flag_test("INSERT_MODE", "REMOTE_SPAWN"))
-            {
-                dynograph_message("Using REMOTE_SPAWN algorithm");
-                insert_batch_with_remote_spawn(S, batch);
-            } else if (optimization_flag_test("INSERT_MODE", "SERIAL")) {
-                dynograph_message("Using SERIAL algorithm");
-                insert_batch_with_remote_spawn(S, batch);
-            } else {
-                dynograph_message("Using default algorithm");
-                insert_batch(S, batch);
-            }
-            hooks_region_end();
-
-            record_graph_distribution(S);
-
-            if (dynograph_enable_algs_for_batch(dataset, batch_id))
-            {
-                record_graph_size(S);
-                const char *alg_name = args.alg_names;
-                // FIXME implement multiple algs
-                //for (std::string alg_name : args.alg_names)
-                if (alg != NULL)
-                {
-                    // TODO implement multiple sources for BC
-                    int64_t num_sources = 1;
-                    int64_t source_vertex = highest_degree_vertex(S);
-                    hooks_set_attr_i64("source_vertex", source_vertex);
-                    dynograph_message("Running %s", alg_name);
-                    hooks_region_begin(alg_name);
-                    run_alg(S, alg_name, nv, alg_data, source_vertex);
-                    hooks_region_end();
-                }
-                epoch += 1;
-                assert(epoch <= args.num_epochs);
-            }
-
-        }
-        assert(epoch == args.num_epochs);
-        dynograph_message("Shutting down stinger...");
-        #if defined(__le64__)
-        stinger_free(alloced_S);
-        #else
-        stinger_free(S);
+    dynograph_message("Allocating alg data...");
+    // Allocate data structures for the algorithm(s)
+    void *alg_data = NULL;
+    if (alg != NULL) {
+        #if defined(STINGER_USE_CONTIGUOUS_ALLOCATION)
+           alg_data = xcalloc(sizeof(int64_t) * alg->data_per_vertex, nv);
+        #elif defined(STINGER_USE_DISTRIBUTED_ALLOCATION)
+           alg_data = xmw_malloc1d(alg->data_per_vertex * nv);
         #endif
     }
+
+    // Run the algorithm(s) after each inserted batch
+    int64_t epoch = 0;
+    for (int64_t batch_id = 0; batch_id < dataset->num_batches; ++batch_id)
+    {
+
+        struct dynograph_edge_batch batch = dynograph_get_batch(dataset, batch_id);
+        dynograph_message("Inserting batch %lli", batch_id);
+
+        insert_batch(S, batch);
+    }
+
+
+    dynograph_message("Shutting down stinger...");
+    #if defined(__le64__)
+    stinger_free(alloced_S);
+    #else
+    stinger_free(S);
+    #endif
 
     dynograph_free_dataset(dataset);
 
