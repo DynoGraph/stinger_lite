@@ -22,12 +22,9 @@
 // Figure out how many edge blocks we can allocate to fill STINGER_MAX_MEMSIZE
 // Assumes we need just enough room for nv vertices and puts the rest into edge blocks
 // Basically implements calculate_stinger_size() in reverse
-struct stinger_config_t
-generate_stinger_config(int64_t nv) {
-    dynograph_message("Stinger will consume %lu MB of RAM",
-        calculate_stinger_size(0, 0, 0, 0).size >> 20);
-    struct stinger_config_t config;
-    return config;
+void
+generate_stinger_config() {
+    stinger_ebpool_size(0);
 }
 
 void
