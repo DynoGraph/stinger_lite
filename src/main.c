@@ -119,14 +119,6 @@ insert_batch(struct stinger *S, struct dynograph_edge_batch batch)
     #pragma cilk grainsize = 1
     stinger_parallel_for (int64_t i = 0; i < batch.num_edges; ++i)
     {
-        const struct dynograph_edge *e = &batch.edges[i];
-        if (directed)
-        {
-            stinger_incr_edge     (S, type, e->src, e->dst, e->weight, e->timestamp);
-        } else { // undirected
-            stinger_incr_edge_pair(S, type, e->src, e->dst, e->weight, e->timestamp);
-        }
-        hooks_traverse_edges(1);
     }
 }
 
