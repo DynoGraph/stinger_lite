@@ -73,7 +73,16 @@ generate_stinger_config(int64_t nv) {
 void
 insert_batch(struct stinger *S, struct dynograph_edge_batch batch)
 {
-    // #pragma cilk grainsize = 1
+    stinger_parallel_for (int64_t i = 0; i < batch.num_edges; ++i)
+    {
+    }
+}
+
+void
+good_insert_batch(struct stinger *S, struct dynograph_edge_batch batch)
+{
+    struct dynograph_edge_batch batch1;
+    batch1.num_edges = 10;
     stinger_parallel_for (int64_t i = 0; i < batch.num_edges; ++i)
     {
     }
@@ -90,49 +99,11 @@ int main(int argc, char *argv[])
     dynograph_message("Loading dataset...");
     struct dynograph_dataset* dataset = dynograph_load_dataset(&args);
 
-    int64_t nv = dataset->max_vertex_id + 1;
-    struct stinger_config_t config = generate_stinger_config(nv);
+    int64_t batch_id = 0;
+    struct dynograph_edge_batch batch = dynograph_get_batch(dataset, batch_id);
+    dynograph_message("Inserting batch %lli", batch_id);
 
-    dynograph_message("Initializing stinger...");
-    struct stinger *S = stinger_new_full(&config);
-
-    #if defined(__le64__)
-    dynograph_message("Replicating stinger struct...");
-    /*
-        The stinger struct contains the pointers to each distributed data structure.
-        All threads will need to access it, and it won't change after allocation.
-        So we replicate it to each nodelet to avoid unnecessary migrations
-    */
-    // For each nodelet...
-    for (size_t i = 0; i < NODELETS(); ++i)
-    {
-        // Get a pointer to the storage reserved for the local copy of the stinger struct
-        struct stinger *local_ptr = mw_get_nth(&local_S, i);
-        // Fill it with valid pointers
-        memcpy(local_ptr, S, sizeof(struct stinger));
-    }
-    // Keep track of the original allocation so we can free it
-    struct stinger *alloced_S = S;
-    // From now on always use the local copy of S
-    S = &local_S;
-    #endif
-
-    // Run the algorithm(s) after each inserted batch
-    int64_t epoch = 0;
-    for (int64_t batch_id = 0; batch_id < dataset->num_batches; ++batch_id)
-    {
-        struct dynograph_edge_batch batch = dynograph_get_batch(dataset, batch_id);
-        dynograph_message("Inserting batch %lli", batch_id);
-
-        insert_batch(S, batch);
-    }
-
-    dynograph_message("Shutting down stinger...");
-    #if defined(__le64__)
-    stinger_free(alloced_S);
-    #else
-    stinger_free(S);
-    #endif
+    insert_batch(NULL, batch);
 
     dynograph_free_dataset(dataset);
 
